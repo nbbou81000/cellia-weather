@@ -185,12 +185,12 @@ canvas{display:block}
 .sun-item-val{font-size:14px;font-weight:700}
 
 @media(max-width:768px){
-  .hero-temp{font-size:80px}.hero-grid{grid-template-columns:1fr;gap:16px}.hero-right{text-align:left}
+  .hero-temp{font-size:64px}.hero-grid{grid-template-columns:1fr;gap:16px}.hero-right{text-align:left}
   .grid4{grid-template-columns:repeat(2,1fr)}.charts2{grid-template-columns:1fr}
   .grid3{grid-template-columns:1fr 1fr}.scores-row{grid-template-columns:1fr}
   .forecast-row{grid-template-columns:repeat(2,1fr)}
 }
-@media(max-width:480px){.grid4{grid-template-columns:1fr 1fr}.grid3{grid-template-columns:1fr}}
+@media(max-width:480px){.hero-temp{font-size:52px}.grid4{grid-template-columns:1fr 1fr}.grid3{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -210,16 +210,31 @@ canvas{display:block}
     <div class="hero-grid">
       <div>
         <div class="hero-eyebrow" id="heyebrow">Station exterieure</div>
-        <div class="hero-temp-wrap">
-          <span class="hero-temp" id="htemp">--</span>
-          <span class="hero-unit" style="color:var(--text-dim)">C</span>
+        <div style="display:flex;align-items:flex-start;gap:0">
+          <!-- Temperature exterieure -->
+          <div>
+            <div style="font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dimmer);margin-bottom:2px">Ext.</div>
+            <div class="hero-temp-wrap" style="margin-bottom:0">
+              <span class="hero-temp" id="htemp">--</span>
+              <span class="hero-unit" style="color:var(--text-dim)">C</span>
+            </div>
+          </div>
+          <!-- Separateur -->
+          <div style="font-size:80px;font-weight:100;color:var(--border);line-height:1;margin:18px 16px 0">|</div>
+          <!-- Temperature interieure -->
+          <div>
+            <div style="font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dimmer);margin-bottom:2px">Int. <span id="hmodule-name" style="font-weight:400;text-transform:none;letter-spacing:0"></span></div>
+            <div class="hero-temp-wrap" style="margin-bottom:0">
+              <span class="hero-temp" id="htin" style="color:var(--amber)">--</span>
+              <span class="hero-unit" style="color:var(--text-dim)">C</span>
+            </div>
+          </div>
         </div>
-        <div class="hero-cond" id="hcond">Chargement...</div>
+        <div class="hero-cond" style="margin-top:8px" id="hcond">Chargement...</div>
         <div class="hero-meta">
-          <div class="meta-item"><span class="meta-label">Ressenti</span><span class="meta-val" id="hfeel">--</span></div>
+          <div class="meta-item"><span class="meta-label">Ressenti ext</span><span class="meta-val" id="hfeel">--</span></div>
           <div class="meta-item"><span class="meta-label">Humidite ext</span><span class="meta-val" id="hhout">--</span></div>
           <div class="meta-item"><span class="meta-label">Pression</span><span class="meta-val" id="hpress">--</span></div>
-          <div class="meta-item"><span class="meta-label">Interieur</span><span class="meta-val" id="htin">--</span></div>
           <div class="meta-item"><span class="meta-label">Point de rosee</span><span class="meta-val" id="hdew">--</span></div>
           <div class="meta-item"><span class="meta-label">DJC aujourd hui</span><span class="meta-val" id="hdjc">--</span></div>
         </div>
@@ -1147,17 +1162,21 @@ function renderHero(data, entries) {
   var dp=dewPoint(out.temperature,out.humidity);
   var djc=computeDJC(entries);
   document.getElementById('htemp').textContent  = f1(out.temperature);
+  document.getElementById('htin').textContent   = f1(inn.temperature);
   document.getElementById('hcond').textContent  = cond.icon+' '+cond.text;
   document.getElementById('hfeel').textContent  = feelsLike(out.temperature,out.humidity);
   document.getElementById('hhout').textContent  = f0(out.humidity)+'%';
   document.getElementById('hpress').textContent = f0(inn.pressure)+' hPa';
-  document.getElementById('htin').textContent   = f1(inn.temperature)+'C';
   document.getElementById('hdew').textContent   = dp!==null?dp+'C':'--';
   document.getElementById('hdjc').textContent   = djc!==null?djc+' DJC':'--';
   document.getElementById('hdate').textContent  = new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   document.getElementById('hupd').textContent   = 'MAJ '+new Date(data.last_updated).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})+' - '+data.station_name;
   document.getElementById('mts').textContent    = new Date(data.last_updated).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
   document.getElementById('sdate').textContent  = new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
+  // Nom du module interieur
+  var moduleName = inn.module_name || '';
+  var mnEl = document.getElementById('hmodule-name');
+  if (mnEl) mnEl.textContent = moduleName ? '(' + moduleName + ')' : '';
   // Source badge
   if (data.outdoor_source==='open-meteo') {
     document.getElementById('heyebrow').textContent = 'Exterieur via Open-Meteo (module en panne)';
