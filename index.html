@@ -357,8 +357,21 @@ canvas{display:block}
   <div style="background:var(--glass);border:1px solid var(--border-soft);border-radius:var(--r);overflow:hidden" id="sparkwrap"></div>
 
   <!-- HEATMAP -->
-  <div class="sec"><span class="sec-title">Heatmap temperature 30 jours</span><div class="sec-line"></div><span class="sec-sub">Moyennes journalieres exterieures</span></div>
-  <div style="background:var(--glass);border:1px solid var(--border-soft);border-radius:var(--r);padding:22px" id="hmwrap"></div>
+  <div class="sec"><span class="sec-title">Heatmap temperature 30 jours</span><div class="sec-line"></div><span class="sec-sub">Moyennes journalieres</span></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px" id="hmwrap-grid">
+    <div style="background:var(--glass);border:1px solid var(--border-soft);border-radius:var(--r);padding:20px">
+      <div style="font-size:11px;font-weight:700;color:var(--text-dim);margin-bottom:14px;display:flex;align-items:center;gap:6px">
+        <span style="color:#38bdf8">&#11044;</span> Exterieure
+      </div>
+      <div id="hmwrap"></div>
+    </div>
+    <div style="background:var(--glass);border:1px solid var(--border-soft);border-radius:var(--r);padding:20px">
+      <div style="font-size:11px;font-weight:700;color:var(--text-dim);margin-bottom:14px;display:flex;align-items:center;gap:6px">
+        <span style="color:#f59e0b">&#11044;</span> Interieure (Salon)
+      </div>
+      <div id="hmwrap-in"></div>
+    </div>
+  </div>
 
   <!-- HISTORY 7D -->
   <div class="sec"><span class="sec-title">Historique 7 jours</span><div class="sec-line"></div></div>
@@ -1495,40 +1508,112 @@ function renderSparks(entries) {
 }
 
 // ── Heatmap ────────────────────────────────────────────
-function renderHeatmap(entries) {
-  var byDay={};
-  for (var i=0;i<entries.length;i++) {
-    var e=entries[i],d=e.timestamp&&e.timestamp.slice(0,10);
-    if (!d||e.temp_out==null) continue;
-    if (!byDay[d]) byDay[d]=[];
-    byDay[d].push(e.temp_out);
+function buildHeatmapHTML(days, avgs, mnOverride, mxOverride) {
+  var valid = avgs.filter(function(v){return v!=null;});
+  var mn = mnOverride != null ? mnOverride : (valid.length ? Math.min.apply(null,valid) : 0);
+  var mx = mxOverride != null ? mxOverride : (valid.length ? Math.max.apply(null,valid) : 30);
+
+  // Layout : 7 lignes (lun->dim), colonnes = semaines
+  // On construit un tableau 7 x N_semaines
+  var firstDow = (new Date(days[0]).getDay() + 6) % 7; // 0=lun
+  var cols = [], cur = [];
+  for (var i = 0; i < firstDow; i++) cur.push({empty:true});
+  for (var i = 0; i < days.length; i++) {
+    cur.push({date:days[i], temp:avgs[i]});
+    if (cur.length === 7) { cols.push(cur); cur = []; }
   }
-  var now=new Date(),days=[];
-  for (var i=0;i<30;i++){var dd=new Date(now-(29-i)*86400000);days.push(dd.toISOString().slice(0,10));}
-  var avgs=days.map(function(d){var v=byDay[d]||[];return v.length?v.reduce(function(a,b){return a+b;},0)/v.length:null;});
-  var valid=avgs.filter(function(v){return v!=null;});
-  var mn=valid.length?Math.min.apply(null,valid):0,mx=valid.length?Math.max.apply(null,valid):30;
-  var firstDow=(new Date(days[0]).getDay()+6)%7,cols=[],cur=[];
-  for (var i=0;i<firstDow;i++) cur.push({empty:true});
-  for (var i=0;i<days.length;i++){cur.push({date:days[i],temp:avgs[i]});if(cur.length===7){cols.push(cur);cur=[];}}
-  if (cur.length) cols.push(cur);
-  var scaleT=[-5,0,5,10,15,20,25,30,35];
-  var html='<div class="hm-outer"><div class="hm-grid">';
-  for (var ci=0;ci<cols.length;ci++){
-    html+='<div class="hm-col">';
-    var col=cols[ci];
-    for (var ri=0;ri<col.length;ri++){
-      var cell=col[ri];
-      var lbl='<div class="hm-lbl">'+(ri===0&&!cell.empty&&cell.date?cell.date.slice(5):'')+'</div>';
-      if (cell.empty||cell.temp==null){html+=lbl+'<div class="hm-cell" style="background:var(--border-soft)" title="--"></div>';}
-      else{var c=tColor(cell.temp,mn,mx);html+=lbl+'<div class="hm-cell" style="background:'+c+'" title="'+cell.date+' - '+cell.temp.toFixed(1)+'C"></div>';}
+  if (cur.length) {
+    while (cur.length < 7) cur.push({empty:true});
+    cols.push(cur);
+  }
+
+  var dayNames = ['L','M','M','J','V','S','D'];
+  var CELL = 18; // px
+  var GAP  = 3;
+
+  // Grille : lignes = jours semaine, colonnes = semaines
+  var html = '<div style="display:flex;gap:'+GAP+'px;overflow-x:auto">';
+
+  // Colonne des labels jour
+  html += '<div style="display:flex;flex-direction:column;gap:'+GAP+'px;padding-top:'+(CELL+GAP)+'px">';
+  for (var r = 0; r < 7; r++) {
+    html += '<div style="height:'+CELL+'px;font-size:8px;color:var(--text-dimmer);display:flex;align-items:center;font-family:var(--mono);width:10px">'+dayNames[r]+'</div>';
+  }
+  html += '</div>';
+
+  // Colonnes semaines
+  for (var ci = 0; ci < cols.length; ci++) {
+    var col = cols[ci];
+    html += '<div style="display:flex;flex-direction:column;gap:'+GAP+'px">';
+    // Label date en haut (premier jour non vide de la colonne)
+    var colLabel = '';
+    for (var ri = 0; ri < col.length; ri++) {
+      if (!col[ri].empty && col[ri].date) { colLabel = col[ri].date.slice(5); break; }
     }
-    html+='</div>';
+    html += '<div style="height:'+CELL+'px;font-size:8px;color:var(--text-dimmer);font-family:var(--mono);display:flex;align-items:center;justify-content:center;min-width:'+CELL+'px">'+colLabel+'</div>';
+    // Cellules
+    for (var ri = 0; ri < col.length; ri++) {
+      var cell = col[ri];
+      if (cell.empty || cell.temp == null) {
+        html += '<div style="width:'+CELL+'px;height:'+CELL+'px;border-radius:3px;background:var(--border-soft)" title="--"></div>';
+      } else {
+        var c = tColor(cell.temp, mn, mx);
+        html += '<div style="width:'+CELL+'px;height:'+CELL+'px;border-radius:3px;background:'+c+';cursor:default;transition:transform .15s" title="'+cell.date+' - '+cell.temp.toFixed(1)+'C" onmouseover="this.style.transform=\'scale(1.4)\'" onmouseout="this.style.transform=\'\'"></div>';
+      }
+    }
+    html += '</div>';
   }
-  html+='</div></div><div class="hm-legend"><span class="hm-leg-lbl">'+mn.toFixed(0)+'C</span>'+
-    '<div class="hm-scale">'+scaleT.map(function(t){return '<div class="hm-scale-cell" style="background:'+tColor(t,mn,mx)+'" title="'+t+'C"></div>';}).join('')+'</div>'+
-    '<span class="hm-leg-lbl">'+mx.toFixed(0)+'C</span></div>';
-  document.getElementById('hmwrap').innerHTML=html;
+  html += '</div>';
+
+  // Legende
+  var scaleT = [0, 5, 10, 15, 20, 25, 30, 35];
+  html += '<div class="hm-legend"><span class="hm-leg-lbl">'+mn.toFixed(0)+'C</span>';
+  html += '<div class="hm-scale">'+scaleT.map(function(t){return '<div class="hm-scale-cell" style="background:'+tColor(t,mn,mx)+'" title="'+t+'C"></div>';}).join('')+'</div>';
+  html += '<span class="hm-leg-lbl">'+mx.toFixed(0)+'C</span></div>';
+
+  return html;
+}
+
+function renderHeatmap(entries) {
+  var now = new Date(), days = [];
+  for (var i = 0; i < 30; i++) {
+    var dd = new Date(now - (29-i)*86400000);
+    days.push(dd.toISOString().slice(0,10));
+  }
+
+  // --- Exterieure ---
+  var byOut = {};
+  for (var i = 0; i < entries.length; i++) {
+    var e = entries[i], d = e.timestamp && e.timestamp.slice(0,10);
+    if (!d || e.temp_out == null) continue;
+    if (!byOut[d]) byOut[d] = [];
+    byOut[d].push(e.temp_out);
+  }
+  var avgsOut = days.map(function(d){
+    var v = byOut[d] || [];
+    return v.length ? v.reduce(function(a,b){return a+b;},0)/v.length : null;
+  });
+
+  // --- Interieure ---
+  var byIn = {};
+  for (var i = 0; i < entries.length; i++) {
+    var e = entries[i], d = e.timestamp && e.timestamp.slice(0,10);
+    if (!d || e.temp_in == null) continue;
+    if (!byIn[d]) byIn[d] = [];
+    byIn[d].push(e.temp_in);
+  }
+  var avgsIn = days.map(function(d){
+    var v = byIn[d] || [];
+    return v.length ? v.reduce(function(a,b){return a+b;},0)/v.length : null;
+  });
+
+  // Echelle commune pour comparaison coherente
+  var allValid = avgsOut.concat(avgsIn).filter(function(v){return v!=null;});
+  var mn = allValid.length ? Math.min.apply(null, allValid) : 0;
+  var mx = allValid.length ? Math.max.apply(null, allValid) : 30;
+
+  document.getElementById('hmwrap').innerHTML    = buildHeatmapHTML(days, avgsOut, mn, mx);
+  document.getElementById('hmwrap-in').innerHTML = buildHeatmapHTML(days, avgsIn,  mn, mx);
 }
 
 // ── MAIN RENDER ────────────────────────────────────────
