@@ -1,1 +1,15 @@
-{"entries":[]}
+{
+  "entries": [
+    {
+      "timestamp": "2026-06-29T07:28:35.665Z",
+      "temp_out": 21.8,
+      "temp_in": 24.8,
+      "hum_out": 78,
+      "hum_in": 61,
+      "pressure": 1031.3,
+      "co2": 533,
+      "noise": 38,
+      "outdoor_source": "open-meteo"
+    }
+  ]
+}
