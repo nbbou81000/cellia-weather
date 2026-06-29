@@ -21,6 +21,17 @@
       "co2": 487,
       "noise": 39,
       "outdoor_source": "open-meteo"
+    },
+    {
+      "timestamp": "2026-06-29T09:00:58.616Z",
+      "temp_out": 23.3,
+      "temp_in": 23,
+      "hum_out": 70,
+      "hum_in": 54,
+      "pressure": 1031.3,
+      "co2": 497,
+      "noise": 38,
+      "outdoor_source": "open-meteo"
     }
   ]
 }
