@@ -256,6 +256,21 @@ canvas{display:block}
   <div class="sec"><span class="sec-title">Previsions calculees 3h</span><div class="sec-line"></div><span class="sec-sub">Regression lineaire sur historique recent</span></div>
   <div class="forecast-row" id="forecast-row"></div>
 
+  <!-- SELECTEUR DE PERIODE HISTORIQUE -->
+  <div class="sec"><span class="sec-title">Periode d historique</span><div class="sec-line"></div><span class="sec-sub" id="hist-range-info">--</span></div>
+  <div style="background:var(--glass);border:1px solid var(--border-soft);border-radius:var(--r);padding:14px 18px;margin-bottom:4px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <span style="font-size:11px;color:var(--text-dimmer);font-weight:700">Charger :</span>
+    <div style="display:flex;gap:6px;flex-wrap:wrap" id="period-btns">
+      <button class="range-btn active" data-period="1m">Ce mois</button>
+      <button class="range-btn" data-period="2m">2 mois</button>
+      <button class="range-btn" data-period="3m">3 mois</button>
+      <button class="range-btn" data-period="6m">6 mois</button>
+      <button class="range-btn" data-period="1y">1 an</button>
+      <button class="range-btn" data-period="all">Tout</button>
+    </div>
+    <span style="font-size:10px;color:var(--text-dimmer);margin-left:auto" id="period-loading" style="display:none">Chargement...</span>
+  </div>
+
   <!-- CHARTS -->
   <div class="sec"><span class="sec-title">Graphiques</span><div class="sec-line"></div><span class="sec-sub" id="cpts">--</span></div>
   <div class="charts2">
@@ -1695,11 +1710,10 @@ function renderHeatmap(entries) {
 }
 
 // ── MAIN RENDER ────────────────────────────────────────
-function render(data, hist) {
+function render(data, entries) {
   CURRENT_DATA = data;
-  ALL_ENTRIES  = hist.entries || [];
+  ALL_ENTRIES  = entries;
 
-  // Get coords from place data if available
   if (data.place&&data.place.location) { LAT=data.place.location.lat||LAT; LON=data.place.location.lng||LON; }
 
   renderHero(data, ALL_ENTRIES);
@@ -1708,40 +1722,194 @@ function render(data, hist) {
   renderMetrics(data, ALL_ENTRIES);
   renderAlerts(data, ALL_ENTRIES);
   renderForecast(ALL_ENTRIES);
-  renderChartTemp(24, false);
-  renderChartHum(24, false);
-  renderChartPress(24);
-  renderChartCo2(24);
-  renderChartNoise(24);
+  renderChartTemp(chartRanges.temp, compareActive.temp);
+  renderChartHum(chartRanges.hum, compareActive.hum);
+  renderChartPress(chartRanges.press);
+  renderChartCo2(chartRanges.co2);
+  renderChartNoise(chartRanges.noise);
   renderDayStats(ALL_ENTRIES);
   renderSparks(ALL_ENTRIES);
   renderHeatmap(ALL_ENTRIES);
   renderHistory(false);
 
-  document.getElementById('cpts').textContent = ALL_ENTRIES.length + ' points - 30 jours';
-  document.getElementById('fspan').textContent = 'Historique : '+ALL_ENTRIES.length+' mesures ('+Math.round(ALL_ENTRIES.length/96)+' jours)';
+  var days = ALL_ENTRIES.length > 0 ? Math.round(ALL_ENTRIES.length / 96) : 0;
+  document.getElementById('cpts').textContent = ALL_ENTRIES.length + ' points charges';
+  document.getElementById('fspan').textContent = 'Historique : ' + ALL_ENTRIES.length + ' mesures (' + days + ' jours)';
+}
+
+// ── CHARGEMENT MULTI-FICHIERS MENSUELS ─────────────────
+var HIST_INDEX   = null;   // contenu de history-index.json
+var LOADED_FILES = {};     // cache : key -> entries[]
+var CURRENT_PERIOD = '1m'; // periode active
+
+function monthKeyFromDate(date) {
+  var y = date.getFullYear(), m = date.getMonth() + 1;
+  return y + '-' + (m < 10 ? '0' + m : m);
+}
+
+// Retourne la liste des cles mensuelles a charger selon la periode
+function keysForPeriod(period, availableKeys) {
+  if (!availableKeys || !availableKeys.length) return [];
+  var now = new Date();
+
+  if (period === 'all') return availableKeys.slice();
+
+  var monthsBack;
+  if (period === '1m') monthsBack = 1;
+  else if (period === '2m') monthsBack = 2;
+  else if (period === '3m') monthsBack = 3;
+  else if (period === '6m') monthsBack = 6;
+  else if (period === '1y') monthsBack = 12;
+  else monthsBack = 1;
+
+  var needed = [];
+  for (var i = 0; i < monthsBack; i++) {
+    var d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    needed.push(monthKeyFromDate(d));
+  }
+  // Filtrer sur les cles disponibles
+  return needed.filter(function(k){ return availableKeys.indexOf(k) !== -1; }).reverse();
+}
+
+// Sous-echantillonne si trop de points (pour fluidite graphiques)
+function downsample(entries, maxPoints) {
+  if (entries.length <= maxPoints) return entries;
+  var step = Math.ceil(entries.length / maxPoints);
+  return entries.filter(function(_, i){ return i % step === 0; });
+}
+
+// Fusionne et trie des tableaux d entrees
+function mergeEntries(arrays) {
+  var all = [];
+  for (var i = 0; i < arrays.length; i++) {
+    all = all.concat(arrays[i]);
+  }
+  all.sort(function(a, b){ return a.timestamp < b.timestamp ? -1 : 1; });
+  // Deduplication par timestamp
+  var seen = {}, result = [];
+  for (var j = 0; j < all.length; j++) {
+    if (!seen[all[j].timestamp]) { seen[all[j].timestamp] = true; result.push(all[j]); }
+  }
+  return result;
+}
+
+// Charge un fichier mensuel (avec cache)
+function loadMonthFile(key) {
+  if (LOADED_FILES[key]) {
+    return Promise.resolve(LOADED_FILES[key]);
+  }
+  return fetch('history-' + key + '.json?t=' + Date.now())
+    .then(function(r){ return r.ok ? r.json() : { entries: [] }; })
+    .then(function(data){
+      LOADED_FILES[key] = data.entries || [];
+      return LOADED_FILES[key];
+    })
+    .catch(function(){ return []; });
+}
+
+// Charge et affiche la periode selectionnee
+function loadPeriod(period) {
+  CURRENT_PERIOD = period;
+  var loading = document.getElementById('period-loading');
+  if (loading) loading.textContent = 'Chargement...';
+
+  var keys = HIST_INDEX ? keysForPeriod(period, HIST_INDEX.files) : [];
+
+  // Fallback : si pas d index, essayer le fichier du mois courant
+  if (!keys.length) {
+    var curKey = monthKeyFromDate(new Date());
+    keys = [curKey];
+  }
+
+  var promises = keys.map(function(k){ return loadMonthFile(k); });
+
+  Promise.all(promises).then(function(arrays) {
+    var merged = mergeEntries(arrays);
+    // Pour les grandes periodes, sous-echantillonner pour les graphiques
+    // mais garder toutes les donnees pour les stats
+    var displayEntries = period === 'all' || period === '1y'
+      ? downsample(merged, 5000)
+      : merged;
+
+    ALL_ENTRIES = displayEntries;
+
+    if (CURRENT_DATA) {
+      render(CURRENT_DATA, ALL_ENTRIES);
+    }
+
+    // Mise a jour info periode
+    var infoEl = document.getElementById('hist-range-info');
+    var loadingEl = document.getElementById('period-loading');
+    if (infoEl) {
+      var days = Math.round(merged.length / 96);
+      infoEl.textContent = merged.length + ' mesures sur ' + days + ' jours (' + keys.length + ' mois)';
+    }
+    if (loadingEl) loadingEl.textContent = '';
+  });
+}
+
+// Init selecteur de periode
+function initPeriodSelector() {
+  var btns = document.querySelectorAll('#period-btns .range-btn');
+  for (var i = 0; i < btns.length; i++) {
+    (function(btn){
+      btn.addEventListener('click', function(){
+        var siblings = document.querySelectorAll('#period-btns .range-btn');
+        for (var j = 0; j < siblings.length; j++) siblings[j].classList.remove('active');
+        btn.classList.add('active');
+        loadPeriod(btn.dataset.period);
+      });
+    })(btns[i]);
+  }
 }
 
 // ── LOAD DATA ──────────────────────────────────────────
 function loadData() {
   var t = Date.now();
+  // Charger les donnees actuelles + l index des fichiers historiques
   Promise.all([
-    fetch('weather-data.json?t='+t),
-    fetch('weather-history.json?t='+t).catch(function(){return null;})
+    fetch('weather-data.json?t=' + t),
+    fetch('history-index.json?t=' + t).catch(function(){ return null; })
   ]).then(function(results) {
     var r1 = results[0], r2 = results[1];
     if (!r1.ok) throw new Error('weather-data.json introuvable');
-    return Promise.all([r1.json(), r2&&r2.ok?r2.json():Promise.resolve({entries:[]})]);
+    return Promise.all([
+      r1.json(),
+      r2 && r2.ok ? r2.json() : Promise.resolve(null)
+    ]);
   }).then(function(parsed) {
-    render(parsed[0], parsed[1]);
+    CURRENT_DATA = parsed[0];
+    HIST_INDEX   = parsed[1];
+
+    // Invalider le cache des fichiers deja charges (donnees fraichement mises a jour)
+    var curKey = monthKeyFromDate(new Date());
+    delete LOADED_FILES[curKey];
+
+    // Afficher les mois disponibles dans le selecteur
+    if (HIST_INDEX && HIST_INDEX.files && HIST_INDEX.files.length) {
+      var infoEl = document.getElementById('hist-range-info');
+      if (infoEl) infoEl.textContent = HIST_INDEX.files.length + ' mois disponibles · depuis ' + (HIST_INDEX.first_entry ? HIST_INDEX.first_entry.slice(0,10) : '?');
+    }
+
+    // Charger la periode courante
+    loadPeriod(CURRENT_PERIOD);
+
+    // Mettre a jour hero/scores/alertes/meteo avec les donnees actuelles immediatement
+    renderHero(CURRENT_DATA, ALL_ENTRIES);
+    renderScores(CURRENT_DATA, ALL_ENTRIES);
+    renderSunBar(LAT, LON);
+    renderMetrics(CURRENT_DATA, ALL_ENTRIES);
+    renderAlerts(CURRENT_DATA, ALL_ENTRIES);
+
   }).catch(function(e) {
     console.error(e);
-    document.getElementById('hcond').textContent = 'Erreur de chargement - '+e.message;
+    document.getElementById('hcond').textContent = 'Erreur de chargement - ' + e.message;
   });
 }
 
 initRangeButtons();
 initFullscreen();
+initPeriodSelector();
 loadData();
 setInterval(loadData, 5*60*1000);
 
