@@ -437,30 +437,48 @@ function feelsLike(t, h) {
   return f1(fl)+'C';
 }
 
-// ── Sunrise/sunset calculation (Meeus algorithm) ───────
+// ── Sunrise/sunset calculation (timezone-aware) ────────
 function sunTimes(lat, lon, date) {
-  var rad = Math.PI/180;
-  var J2000 = 2451545.0;
-  var Y = date.getFullYear(), M = date.getMonth()+1, D = date.getDate();
-  var JD = 367*Y - Math.floor(7*(Y+Math.floor((M+9)/12))/4) + Math.floor(275*M/9) + D + 1721013.5;
-  var n = JD - J2000;
-  var L = (280.460 + 0.9856474*n) % 360;
-  var g = (357.528 + 0.9856003*n) * rad;
-  var lam = (L + 1.915*Math.sin(g) + 0.020*Math.sin(2*g)) * rad;
-  var sinDec = Math.sin(23.439*rad)*Math.sin(lam);
+  var rad = Math.PI / 180;
+  // Offset UTC en heures du fuseau local du navigateur
+  var tzOffsetH = -date.getTimezoneOffset() / 60;
+
+  // Jour julien a midi UTC du jour courant
+  var Y = date.getFullYear(), M = date.getMonth() + 1, D = date.getDate();
+  var A = Math.floor((14 - M) / 12);
+  var YY = Y + 4800 - A, MM = M + 12 * A - 3;
+  var JDN = D + Math.floor((153 * MM + 2) / 5) + 365 * YY + Math.floor(YY / 4) - Math.floor(YY / 100) + Math.floor(YY / 400) - 32045;
+  var JD = JDN - 0.5; // midi UTC
+
+  // Calcul NOAA simplifie
+  var n = JD - 2451545.0;
+  var L = ((280.460 + 0.9856474 * n) % 360 + 360) % 360;
+  var g = ((357.528 + 0.9856003 * n) % 360 + 360) % 360 * rad;
+  var lam = (L + 1.915 * Math.sin(g) + 0.020 * Math.sin(2 * g)) * rad;
+  var sinDec = Math.sin(23.439 * rad) * Math.sin(lam);
   var dec = Math.asin(sinDec);
-  var cosH = (Math.sin(-0.833*rad) - Math.sin(lat*rad)*Math.sin(dec)) / (Math.cos(lat*rad)*Math.cos(dec));
-  if (Math.abs(cosH)>1) return null;
-  var H = Math.acos(cosH)/rad;
-  var transit = 12 - (L+lon)/15 - (0-(lon/15));
-  var rise = transit - H/15;
-  var set  = transit + H/15;
+
+  var cosH = (Math.sin(-0.833 * rad) - Math.sin(lat * rad) * Math.sin(dec)) / (Math.cos(lat * rad) * Math.cos(dec));
+  if (Math.abs(cosH) > 1) return null;
+  var H = Math.acos(cosH) / rad;
+
+  // Transit solaire en heures UTC
+  var eqTime = (L - (((357.528 + 0.9856003 * n) % 360 + 360) % 360) - 180) / 15;
+  var transit = 12 - lon / 15 - eqTime / 60;
+
+  // Lever/coucher en heures UTC puis converti en heure locale
+  var riseUTC = transit - H / 15;
+  var setUTC  = transit + H / 15;
+  var riseLocal = ((riseUTC + tzOffsetH) % 24 + 24) % 24;
+  var setLocal  = ((setUTC  + tzOffsetH) % 24 + 24) % 24;
+
   function toHM(h) {
-    var hh = Math.floor(h), mm = Math.round((h-hh)*60);
-    if (mm===60){hh++;mm=0;}
-    return (hh<10?'0':'')+hh+':'+(mm<10?'0':'')+mm;
+    var hh = Math.floor(h), mm = Math.round((h - hh) * 60);
+    if (mm === 60) { hh++; mm = 0; }
+    hh = ((hh % 24) + 24) % 24;
+    return (hh < 10 ? '0' : '') + hh + ':' + (mm < 10 ? '0' : '') + mm;
   }
-  return { rise: toHM(((rise%24)+24)%24), set: toHM(((set%24)+24)%24), riseH: ((rise%24)+24)%24, setH: ((set%24)+24)%24 };
+  return { rise: toHM(riseLocal), set: toHM(setLocal), riseH: riseLocal, setH: setLocal };
 }
 
 // ── Pressure trend ─────────────────────────────────────
