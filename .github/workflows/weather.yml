@@ -1,9 +1,9 @@
 name: Fetch Weather Data
 
 on:
-  schedule:
+#  schedule:
     # Toutes les 15 minutes
-    - cron: '*/15 * * * *'
+#    - cron: '*/15 * * * *'
   workflow_dispatch: # Déclenchement manuel possible
 
 permissions:
