@@ -6,9 +6,9 @@
 <title>CelliA - Meteo en direct</title>
 <style>
 :root{
-  --bg:#1a1c22;--bg2:#12141a;--glass:rgba(255,255,255,.04);--glass-hover:rgba(255,255,255,.07);
-  --border:rgba(255,255,255,.08);--border-soft:rgba(255,255,255,.05);
-  --text-hi:#f0f2f8;--text-dim:#94a3b8;--text-dimmer:#475569;
+  --bg:#1c1714;--bg2:#150f0c;--glass:rgba(255,240,220,.04);--glass-hover:rgba(255,240,220,.07);
+  --border:rgba(255,220,180,.09);--border-soft:rgba(255,220,180,.055);
+  --text-hi:#f5ede4;--text-dim:#a89080;--text-dimmer:#6b5040;
   --red:#ff5a4e;--green:#10b981;--amber:#f59e0b;--blue:#38bdf8;
   --purple:#a78bfa;--cyan:#22d3ee;--orange:#f97316;--indigo:#6366f1;
   --font:system-ui,-apple-system,sans-serif;--mono:'SF Mono','Fira Code',monospace;
@@ -24,7 +24,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text-hi);min-heigh
 canvas{display:block}
 
 /* Navbar */
-.navbar{position:sticky;top:0;z-index:300;height:48px;padding:0 20px;display:flex;align-items:center;justify-content:space-between;background:rgba(26,28,34,.92);backdrop-filter:blur(20px);border-bottom:1px solid var(--border)}
+.navbar{position:sticky;top:0;z-index:300;height:48px;padding:0 20px;display:flex;align-items:center;justify-content:space-between;background:rgba(28,23,20,.92);backdrop-filter:blur(20px);border-bottom:1px solid var(--border)}
 [data-theme="light"] .navbar{background:rgba(240,242,245,.92)}
 .nav-logo{font-weight:800;font-size:15px;letter-spacing:-.03em;text-decoration:none;color:var(--text-hi)}
 .nav-logo em{color:var(--red);font-style:normal}
@@ -132,7 +132,7 @@ canvas{display:block}
 .ch.wide{height:160px}
 
 /* Fullscreen overlay */
-.fs-overlay{display:none;position:fixed;inset:0;z-index:500;background:rgba(10,12,18,.96);backdrop-filter:blur(10px);padding:40px;flex-direction:column}
+.fs-overlay{display:none;position:fixed;inset:0;z-index:500;background:rgba(18,12,8,.97);backdrop-filter:blur(10px);padding:40px;flex-direction:column}
 .fs-overlay.open{display:flex}
 .fs-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
 .fs-title{font-size:18px;font-weight:800}
@@ -910,35 +910,113 @@ function initFullscreen() {
   var fsCanvas = document.getElementById('c-fs');
   var fsChart  = null;
 
+  var titles = {temp:'Temperatures',hum:'Humidite relative',press:'Pression atmospherique',co2:'CO2 interieur',noise:'Bruit ambiant',hist:'Historique 7 jours'};
+
+  function openFS(chartId) {
+    var src = CHS[chartId];
+    if (!src) return;
+    fsTitle.textContent = titles[chartId] || chartId;
+    overlay.classList.add('open');
+    if (fsChart) { fsChart.destroy(); fsChart = null; }
+
+    // Copier labels et datasets depuis le graphique source
+    var srcData = src.data;
+    var newDatasets = srcData.datasets.map(function(ds) {
+      var copy = {};
+      var keys = Object.keys(ds);
+      for (var k = 0; k < keys.length; k++) { copy[keys[k]] = ds[keys[k]]; }
+      // Recreer le gradient sur le nouveau canvas
+      if (copy.backgroundColor && copy.backgroundColor.constructor &&
+          copy.backgroundColor.constructor.name === 'CanvasGradient') {
+        var color = copy.borderColor || '#38bdf8';
+        var g = fsCanvas.getContext('2d').createLinearGradient(0, 0, 0, 500);
+        g.addColorStop(0, color + '55');
+        g.addColorStop(1, color + '00');
+        copy.backgroundColor = g;
+      }
+      copy.pointRadius = 0;
+      copy.pointHoverRadius = 5;
+      return copy;
+    });
+
+    // Copier les options clefs sans fonctions problematiques
+    var srcOpts = src.options;
+    var newOpts = {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: {duration: 400, easing: 'easeInOutQuart'},
+      interaction: {mode:'index', intersect:false},
+      plugins: {
+        legend: {display: false},
+        tooltip: {
+          backgroundColor:'#120d0a',
+          borderColor:'rgba(255,200,150,.12)',
+          borderWidth:1,
+          titleColor:'#a89080',
+          bodyColor:'#f5ede4',
+          padding:12
+        }
+      },
+      elements: {point:{radius:0, hoverRadius:5}, line:{tension:0.4}},
+      scales: {}
+    };
+
+    // Copier les scales depuis la source
+    if (srcOpts && srcOpts.scales) {
+      var scaleKeys = Object.keys(srcOpts.scales);
+      for (var si = 0; si < scaleKeys.length; si++) {
+        var sk = scaleKeys[si];
+        var srcScale = srcOpts.scales[sk];
+        var newScale = {
+          grid: {color:'rgba(255,200,150,.04)'},
+          ticks: {color:'#6b5040', maxTicksLimit: sk==='x' ? 10 : undefined}
+        };
+        if (srcScale.min !== undefined) newScale.min = srcScale.min;
+        if (srcScale.max !== undefined) newScale.max = srcScale.max;
+        if (srcScale.ticks && srcScale.ticks.callback) newScale.ticks.callback = srcScale.ticks.callback;
+        if (sk === 'x') { newScale.grid = {color:'rgba(255,200,150,.02)'}; }
+        newOpts.scales[sk] = newScale;
+      }
+    }
+
+    // Pour le graphique en barres (bruit), copier le type
+    var chartType = src.config.type || 'line';
+    if (chartType === 'bar') {
+      newOpts.elements = {};
+      if (newOpts.scales.x) newOpts.scales.x.grid = {display:false};
+    }
+
+    // Segment colore (CO2)
+    newDatasets.forEach(function(ds) {
+      if (ds.segment) {
+        var segCopy = ds.segment;
+        ds.segment = segCopy;
+      }
+    });
+
+    fsChart = new Chart(fsCanvas, {
+      type: chartType,
+      data: {labels: srcData.labels, datasets: newDatasets},
+      options: newOpts
+    });
+  }
+
   var fsBtns = document.querySelectorAll('.fs-btn');
-  for (var i=0;i<fsBtns.length;i++) {
+  for (var i = 0; i < fsBtns.length; i++) {
     (function(btn){
       btn.addEventListener('click', function(){
-        var chartId = btn.dataset.chart;
-        var srcChart = CHS[chartId==='hist'?'hist':chartId];
-        if (!srcChart) return;
-        var titles = {temp:'Temperatures',hum:'Humidite relative',press:'Pression atmospherique',co2:'CO2 interieur',noise:'Bruit ambiant',hist:'Historique 7 jours'};
-        fsTitle.textContent = titles[chartId] || chartId;
-        overlay.classList.add('open');
-        if (fsChart) { fsChart.destroy(); fsChart=null; }
-        // Clone config
-        var cfg = JSON.parse(JSON.stringify(srcChart.config));
-        cfg.options.animation = {duration:0};
-        fsChart = new Chart(fsCanvas, cfg);
+        openFS(btn.dataset.chart === 'hist' ? 'hist' : btn.dataset.chart);
       });
     })(fsBtns[i]);
   }
 
-  fsClose.addEventListener('click', function(){
+  function closeFS() {
     overlay.classList.remove('open');
-    if (fsChart) { fsChart.destroy(); fsChart=null; }
-  });
-  overlay.addEventListener('click', function(e){
-    if (e.target===overlay) {
-      overlay.classList.remove('open');
-      if (fsChart) { fsChart.destroy(); fsChart=null; }
-    }
-  });
+    if (fsChart) { fsChart.destroy(); fsChart = null; }
+  }
+  fsClose.addEventListener('click', closeFS);
+  overlay.addEventListener('click', function(e){ if (e.target === overlay) closeFS(); });
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape') closeFS(); });
 }
 
 // ── Render scores ──────────────────────────────────────
