@@ -20,18 +20,20 @@ const CLIENT_ID     = process.env.NETATMO_CLIENT_ID;
 const CLIENT_SECRET = process.env.NETATMO_CLIENT_SECRET;
 const REFRESH_TOKEN = process.env.NETATMO_REFRESH_TOKEN;
 
-// Coordonnees utilisees pour Open-Meteo (calcul meteo exterieure) et pour
-// le calcul du lever/coucher de soleil cote frontend.
-// IMPORTANT : ce sont des coordonnees PUBLIQUES volontairement approximatives
-// (centre de Cagnac-les-Mines), pas la position reelle de la station, afin
-// de ne jamais exposer la localisation precise du domicile dans le repo public.
+// Coordonnees REELLES (privees), utilisees uniquement en interne pour
+// interroger Open-Meteo et obtenir une meteo locale precise.
+// Ne jamais ecrire LATITUDE/LONGITUDE telles quelles dans un fichier de sortie.
 const LATITUDE   = process.env.LOCATION_LAT || '43.9333';
 const LONGITUDE  = process.env.LOCATION_LON || '1.9667';
+
+// Coordonnees PUBLIQUES fixes (centre approximatif de Cagnac-les-Mines),
+// totalement independantes des vraies coordonnees ci-dessus.
+// C'est la seule version exposee dans weather-data.json.
 const PUBLIC_PLACE = {
   city:     'Cagnac-les-Mines',
   country:  'FR',
   timezone: 'Europe/Paris',
-  location: [parseFloat(LONGITUDE), parseFloat(LATITUDE)],
+  location: [1.9667, 43.9333],
 };
 
 if (!CLIENT_ID || !CLIENT_SECRET || !REFRESH_TOKEN) {
