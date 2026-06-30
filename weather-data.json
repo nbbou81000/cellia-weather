@@ -1,5 +1,5 @@
 {
-  "last_updated": "2026-06-30T03:45:27.955Z",
+  "last_updated": "2026-06-30T04:00:52.025Z",
   "station_name": "Nico31620 (Chambre Célia)",
   "place": {
     "altitude": 317,
@@ -14,15 +14,15 @@
   "indoor": {
     "temperature": 24.2,
     "humidity": 58,
-    "co2": 1959,
+    "co2": 1979,
     "noise": 37,
-    "pressure": 1027.7,
-    "abs_pressure": 989.7,
+    "pressure": 1027.8,
+    "abs_pressure": 989.8,
     "module_name": "Chambre Célia"
   },
   "outdoor": {
-    "temperature": 23,
-    "humidity": 70,
+    "temperature": 22.9,
+    "humidity": 71,
     "source": "netatmo"
   },
   "outdoor_source": "netatmo"
