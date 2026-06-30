@@ -19,8 +19,20 @@ const MONTH_MAX  = 3000;
 const CLIENT_ID     = process.env.NETATMO_CLIENT_ID;
 const CLIENT_SECRET = process.env.NETATMO_CLIENT_SECRET;
 const REFRESH_TOKEN = process.env.NETATMO_REFRESH_TOKEN;
-const LATITUDE      = process.env.LOCATION_LAT || '44.8378';
-const LONGITUDE     = process.env.LOCATION_LON || '-0.5792';
+
+// Coordonnees utilisees pour Open-Meteo (calcul meteo exterieure) et pour
+// le calcul du lever/coucher de soleil cote frontend.
+// IMPORTANT : ce sont des coordonnees PUBLIQUES volontairement approximatives
+// (centre de Cagnac-les-Mines), pas la position reelle de la station, afin
+// de ne jamais exposer la localisation precise du domicile dans le repo public.
+const LATITUDE   = process.env.LOCATION_LAT || '43.9333';
+const LONGITUDE  = process.env.LOCATION_LON || '1.9667';
+const PUBLIC_PLACE = {
+  city:     'Cagnac-les-Mines',
+  country:  'FR',
+  timezone: 'Europe/Paris',
+  location: [parseFloat(LONGITUDE), parseFloat(LATITUDE)],
+};
 
 if (!CLIENT_ID || !CLIENT_SECRET || !REFRESH_TOKEN) {
   console.error('Variables manquantes : NETATMO_CLIENT_ID, NETATMO_CLIENT_SECRET, NETATMO_REFRESH_TOKEN');
@@ -94,8 +106,11 @@ function parseNetatmo(apiData) {
   const outdoorOk = outdoorDash && outdoorAge < 1800;
 
   return {
-    station_name: station.station_name || 'Ma Station',
-    place:        station.place || {},
+    // Nom generique : on n'expose jamais le station_name reel (peut contenir
+    // un nom de famille / une adresse selon la config du compte Netatmo).
+    station_name: 'Station meteo',
+    // place n'est PLUS lue depuis l'API Netatmo (contenait ville/pays/GPS reels).
+    // On utilise systematiquement PUBLIC_PLACE, defini plus haut.
     indoor: {
       temperature:  dash.Temperature      || null,
       humidity:     dash.Humidity         || null,
@@ -103,7 +118,7 @@ function parseNetatmo(apiData) {
       noise:        dash.Noise            || null,
       pressure:     dash.Pressure         || null,
       abs_pressure: dash.AbsolutePressure || null,
-      module_name:  station.module_name   || 'Interieur',
+      module_name:  'Etage',
     },
     outdoor_native: outdoorOk ? {
       temperature: outdoorDash.Temperature || null,
@@ -161,7 +176,7 @@ const now = new Date().toISOString();
 const result = {
   last_updated:   now,
   station_name:   parsed.station_name,
-  place:          parsed.place,
+  place:          PUBLIC_PLACE, // coordonnees publiques fixes, jamais la position reelle
   indoor:         parsed.indoor,
   outdoor:        outdoor,
   outdoor_source: outdoor.source,
