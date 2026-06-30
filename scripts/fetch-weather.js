@@ -11,6 +11,7 @@ const __dirname  = path.dirname(fileURLToPath(import.meta.url));
 const ROOT       = path.join(__dirname, '..');
 const DATA_OUT   = path.join(ROOT, 'weather-data.json');
 const INDEX_OUT  = path.join(ROOT, 'history-index.json');
+const AC_STATE_FILE = path.join(ROOT, 'ac-state.json');
 const TIMEOUT_MS = 15_000;
 // Plafond par fichier mensuel : 96 points/jour x 31 jours = 2976
 // On garde une marge et on ne purge JAMAIS les anciens mois
@@ -229,6 +230,23 @@ if (fs.existsSync(legacyFile)) {
   }
 }
 
+// ── Etat clim manuel (signal envoye depuis le panneau dans index.html) ─────
+// ac-state.json est mis a jour par commit direct depuis le navigateur (voir
+// ACState dans index.html). On reporte simplement le dernier etat connu :
+// si l utilisateur oublie de changer le signal, on suppose qu il n a pas
+// change d avis, ce qui est correct la grande majorite du temps.
+let acState = { state: 'off', setpoint: null };
+try {
+  if (fs.existsSync(AC_STATE_FILE)) {
+    const parsedAc = JSON.parse(fs.readFileSync(AC_STATE_FILE, 'utf-8'));
+    if (parsedAc && (parsedAc.state === 'on' || parsedAc.state === 'off')) {
+      acState = { state: parsedAc.state, setpoint: parsedAc.setpoint || null };
+    }
+  }
+} catch (e) {
+  console.warn('Lecture ac-state.json echouee, etat clim ignore pour ce cycle :', e.message);
+}
+
 // Ajouter la nouvelle entree
 const newEntry = {
   timestamp:      now,
@@ -240,6 +258,8 @@ const newEntry = {
   co2:            parsed.indoor.co2,
   noise:          parsed.indoor.noise,
   outdoor_source: outdoor.source,
+  ac_state:       acState.state,
+  ac_setpoint:    acState.state === 'on' ? acState.setpoint : null,
 };
 monthData.entries.push(newEntry);
 
