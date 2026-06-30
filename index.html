@@ -131,6 +131,24 @@ canvas{display:block}
 .ch.tall{height:230px}
 .ch.wide{height:160px}
 
+/* AC control panel */
+.ac-panel{background:rgba(167,139,250,.05);border:1px solid rgba(167,139,250,.18);border-radius:var(--rs);padding:12px 14px;margin-top:10px}
+.ac-panel-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px;flex-wrap:wrap}
+.ac-panel-title{font-size:11px;font-weight:700;color:var(--text-hi)}
+.ac-panel-status{font-size:10px;color:var(--text-dimmer)}
+.ac-panel-status.stale{color:#f59e0b}
+.ac-btns{display:flex;gap:5px;flex-wrap:wrap}
+.ac-btn{font-size:11px;font-weight:700;padding:6px 11px;border-radius:7px;border:1px solid var(--border);background:transparent;color:var(--text-dimmer);cursor:pointer;font-family:var(--font);transition:.15s}
+.ac-btn:hover{color:var(--text-hi);border-color:rgba(255,255,255,.2)}
+.ac-btn.active{background:var(--purple);border-color:var(--purple);color:#fff}
+.ac-btn.off.active{background:#475569;border-color:#475569}
+.ac-token-row{display:flex;gap:6px;align-items:center;margin-top:10px;font-size:10px;color:var(--text-dimmer)}
+.ac-token-row input{flex:1;min-width:0;font-size:11px;padding:5px 8px;border-radius:6px;border:1px solid var(--border);background:var(--glass);color:var(--text-hi);font-family:var(--mono)}
+.ac-token-row button{font-size:10px;font-weight:700;padding:5px 10px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text-dimmer);cursor:pointer;white-space:nowrap}
+.ac-token-row button:hover{color:var(--text-hi)}
+.ac-saving{font-size:10px;color:var(--purple)}
+.ac-error{font-size:10px;color:var(--red)}
+
 /* Fullscreen overlay */
 .fs-overlay{
   display:none;position:fixed;inset:0;z-index:500;
@@ -696,6 +714,98 @@ function linearRegression(vals) {
   var intercept = (sumY-slope*sumX)/n;
   return {slope:slope, intercept:intercept, predict:function(x){return slope*x+intercept;}};
 }
+
+// ── AC state management (manual signal: clim ON/OFF + consigne) ────────
+// Le token GitHub n'est JAMAIS commite : il vit uniquement dans le
+// localStorage de l'appareil qui l'a saisi (meme principe que netatmo-setup.html).
+var AC_REPO   = 'nbbou81000/cellia-weather';
+var AC_FILE   = 'ac-state.json';
+var AC_BRANCH = 'main';
+var AC_TOKEN_KEY = 'cellia_gh_token';
+
+var ACState = {
+  data: null,       // contenu courant de ac-state.json
+  sha: null,        // sha du fichier (necessaire pour commit GitHub)
+  loaded: false,
+
+  getToken: function() {
+    try { return localStorage.getItem(AC_TOKEN_KEY) || ''; } catch(e) { return ''; }
+  },
+  setToken: function(t) {
+    try { localStorage.setItem(AC_TOKEN_KEY, t); } catch(e) {}
+  },
+  hasToken: function() { return !!this.getToken(); },
+
+  // Charge ac-state.json public (lecture seule, pas besoin de token)
+  load: function() {
+    var self = this;
+    return fetch('ac-state.json?t=' + Date.now())
+      .then(function(r){ return r.ok ? r.json() : { state:'off', setpoint:null, updated_at:null, history:[] }; })
+      .then(function(d){
+        self.data = d;
+        self.loaded = true;
+        return d;
+      })
+      .catch(function(){
+        self.data = { state:'off', setpoint:null, updated_at:null, history:[] };
+        self.loaded = true;
+        return self.data;
+      });
+  },
+
+  // Recupere le sha actuel du fichier via l API GitHub (necessaire pour update)
+  fetchSha: function() {
+    var token = this.getToken();
+    return fetch('https://api.github.com/repos/' + AC_REPO + '/contents/' + AC_FILE + '?ref=' + AC_BRANCH, {
+      headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github+json' }
+    }).then(function(r){
+      if (r.status === 404) return null; // fichier pas encore cree
+      if (!r.ok) throw new Error('Lecture GitHub echouee (' + r.status + ')');
+      return r.json();
+    }).then(function(j){ return j ? j.sha : null; });
+  },
+
+  // Ecrit le nouvel etat via un commit direct sur GitHub
+  setState: function(state, setpoint) {
+    var self = this;
+    var token = this.getToken();
+    if (!token) return Promise.reject(new Error('Aucun token GitHub configure'));
+
+    return this.fetchSha().then(function(sha){
+      var now = new Date().toISOString();
+      var prevHistory = (self.data && self.data.history) ? self.data.history : [];
+      var newHistory = prevHistory.concat([{ timestamp: now, state: state, setpoint: setpoint }]).slice(-500);
+      var newData = { state: state, setpoint: setpoint, updated_at: now, history: newHistory };
+
+      var content = btoa(unescape(encodeURIComponent(JSON.stringify(newData, null, 2))));
+      var body = {
+        message: 'AC state: ' + state + (setpoint ? ' (' + setpoint + 'C)' : '') + ' - ' + now,
+        content: content,
+        branch: AC_BRANCH
+      };
+      if (sha) body.sha = sha;
+
+      return fetch('https://api.github.com/repos/' + AC_REPO + '/contents/' + AC_FILE, {
+        method: 'PUT',
+        headers: {
+          'Authorization': 'token ' + token,
+          'Accept': 'application/vnd.github+json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(body)
+      }).then(function(r){
+        if (!r.ok) return r.json().then(function(err){ throw new Error(err.message || ('Commit echoue (' + r.status + ')')); });
+        self.data = newData;
+        return newData;
+      });
+    });
+  },
+
+  hoursSinceUpdate: function() {
+    if (!this.data || !this.data.updated_at) return null;
+    return (Date.now() - new Date(this.data.updated_at).getTime()) / 3600000;
+  }
+};
 
 // ── Comfort index (temp + humidity combined) ───────────
 function comfortIndex(tIn, hIn) {
@@ -1552,19 +1662,40 @@ function thermalPrediction(data, entries) {
   var totalH = entries.length / 4;
 
   // --- Detection des periodes clim active ---
-  // Heuristique : clim active si temp_in baisse alors que temp_out monte ou est elevee
-  // On separe les donnees en deux sous-ensembles : clim ON / clim OFF
+  // Priorite 1 : signal manuel reel (ac_state/ac_setpoint attaches a chaque entree
+  // par fetch-weather.js a partir de ac-state.json). Beaucoup plus fiable que
+  // n importe quelle heuristique car il reflete ce qui s est vraiment passe.
+  // Priorite 2 (repli) : heuristique sur les variations de temperature, utilisee
+  // uniquement pour les entrees anciennes qui n ont pas encore de signal manuel.
   var climOn = [], climOff = [];
+  var manualCount = 0;
+  var bySetpoint = {}; // setpoint -> [{tOut, tIn, tInPrev}, ...] pour calibration par palier
+
   for (var i = 4; i < entries.length; i++) {
     var e  = entries[i], ep = entries[i-4]; // delta sur 1h
     if (e.temp_out == null || e.temp_in == null || ep.temp_out == null || ep.temp_in == null) continue;
-    var deltaTOut = e.temp_out - ep.temp_out;
-    var deltaTIn  = e.temp_in  - ep.temp_in;
-    // Clim active si temp ext elevee (>22C) ET temp int baisse ou stable
-    var climSuspected = e.temp_out > 22 && deltaTIn < 0.2;
-    if (climSuspected) climOn.push(e);
-    else climOff.push(e);
+
+    var hasManual = e.ac_state === 'on' || e.ac_state === 'off';
+    var isOn;
+    if (hasManual) {
+      manualCount++;
+      isOn = e.ac_state === 'on';
+      if (isOn && e.ac_setpoint) {
+        var sp = e.ac_setpoint;
+        if (!bySetpoint[sp]) bySetpoint[sp] = [];
+        bySetpoint[sp].push({ tOut: e.temp_out, tIn: e.temp_in, tInPrev: ep.temp_in });
+      }
+    } else {
+      var deltaTIn  = e.temp_in  - ep.temp_in;
+      isOn = e.temp_out > 22 && deltaTIn < 0.2;
+    }
+    if (isOn) climOn.push(e); else climOff.push(e);
   }
+
+  // Au moins 48h de donnees ET au moins 12h de signal manuel exploitable
+  // pour considerer la calibration comme fiable. En dessous, on retombe
+  // sur l estimation generique pour ne pas afficher des chiffres trompeurs.
+  var manualCalibrated = totalH >= 48 && manualCount >= 48; // 48 slots de 15min = 12h de signal manuel
 
   // --- Calcul coefficient thermique (rapport temp_in / temp_out) ---
   // Sur periodes sans clim, on apprend combien de degres int pour chaque degre ext
@@ -1590,6 +1721,21 @@ function thermalPrediction(data, entries) {
         calibrated = true;
       }
     }
+  }
+
+  // --- Calibration par palier de consigne (uniquement si signal manuel suffisant) ---
+  // Pour chaque reglage (18 a 23C), on calcule l ecart moyen reel observe entre
+  // la consigne affichee et la temperature effectivement atteinte dans la piece,
+  // ce qui capture le sous-dimensionnement / sur-dimensionnement reel de la clim.
+  var setpointOffsets = {}; // setpoint -> ecart moyen (tIn reel - setpoint)
+  if (manualCalibrated) {
+    Object.keys(bySetpoint).forEach(function(sp) {
+      var samples = bySetpoint[sp];
+      if (samples.length < 4) return;
+      var sum = 0;
+      samples.forEach(function(s){ sum += (s.tIn - parseFloat(sp)); });
+      setpointOffsets[sp] = sum / samples.length;
+    });
   }
 
   // --- Regression lineaire sur temp ext (3h a venir) ---
@@ -1640,6 +1786,9 @@ function thermalPrediction(data, entries) {
     predictions: predictions,
     alertH: alertH,
     calibrated: calibrated,
+    manualCalibrated: manualCalibrated,
+    manualCount: manualCount,
+    setpointOffsets: setpointOffsets,
     totalH: totalH,
     tIn: tIn,
     tOut: tOut
@@ -1671,16 +1820,25 @@ function renderThermalBlock(data, entries) {
   }
 
   // Pour chaque reglage clim et chaque horizon : temp prevue
-  // La clim met ~30-60 min pour descendre, on modelise la convergence
+  // Si calibre manuellement : on part de l ecart REEL observe pour ce palier
+  // (setpointOffsets), donc la prediction reflete le comportement reel de la
+  // piece a ce reglage plutot qu une simple convergence theorique vers la consigne.
+  // Sinon : modele generique de convergence vers la consigne en ~1h30.
   function climTemp(tIn, target, h) {
     var climEff = clamp(h / 1.5, 0, 1);
+    if (result.manualCalibrated && result.setpointOffsets[target] !== undefined) {
+      var realTarget = target + result.setpointOffsets[target];
+      return parseFloat((tIn + (realTarget - tIn) * climEff).toFixed(1));
+    }
     return parseFloat((tIn + (target - tIn) * climEff).toFixed(1));
   }
 
-  var precisionLabel = calibrated
-    ? 'Calibre sur historique'
-    : totalH >= 24 ? 'Estimation 24h' : 'Estimation initiale';
-  var precisionColor = calibrated ? '#10b981' : totalH >= 24 ? '#f59e0b' : '#94a3b8';
+  var precisionLabel = result.manualCalibrated
+    ? 'Calibre sur signal reel'
+    : calibrated
+      ? 'Calibre sur historique'
+      : totalH >= 24 ? 'Estimation 24h' : 'Estimation initiale';
+  var precisionColor = result.manualCalibrated ? '#a78bfa' : calibrated ? '#10b981' : totalH >= 24 ? '#f59e0b' : '#94a3b8';
 
   var lastPred = preds[preds.length - 1];
   var climReco = '';
@@ -1770,12 +1928,109 @@ function renderThermalBlock(data, entries) {
   html += '<strong>' + recoIcon + ' ' + climReco + '</strong>';
   html += '</div>';
 
-  if (!calibrated) {
+  if (!calibrated && !result.manualCalibrated) {
     html += '<div style="font-size:10px;color:var(--text-dimmer);margin-top:8px">Precision en cours : le modele se calibre automatiquement apres 48h de donnees.</div>';
+  } else if (calibrated && !result.manualCalibrated) {
+    html += '<div style="font-size:10px;color:var(--text-dimmer);margin-top:8px">Astuce : signalez l etat reel de votre clim ci-dessous pendant quelques jours pour des predictions par palier basees sur des donnees reelles plutot que sur une estimation generique.</div>';
+  }
+
+  html += '<div id="ac-panel-mount"></div>';
+
+  html += '</div>';
+  return html;
+}
+
+// ── AC control panel rendering ──────────────────────────
+function renderAcPanel() {
+  var s = ACState.data || { state:'off', setpoint:null, updated_at:null };
+  var hasToken = ACState.hasToken();
+  var hoursSince = ACState.hoursSinceUpdate();
+  var isStale = hoursSince !== null && hoursSince > 6;
+
+  var statusText;
+  if (!s.updated_at) statusText = 'Aucun signal envoye pour le moment';
+  else {
+    var h = hoursSince;
+    var hLabel = h < 1 ? Math.round(h*60) + ' min' : Math.round(h) + 'h';
+    statusText = 'Etat actuel : ' + (s.state === 'on' ? ('clim ' + (s.setpoint || '') + 'C') : 'clim eteinte') + ' - maj il y a ' + hLabel;
+  }
+
+  var html = '<div class="ac-panel" id="ac-panel">';
+  html += '<div class="ac-panel-hd"><span class="ac-panel-title">Signal clim manuel</span>';
+  html += '<span class="ac-panel-status' + (isStale ? ' stale' : '') + '" id="ac-status-txt">' + statusText + '</span></div>';
+
+  html += '<div class="ac-btns">';
+  html += '<button class="ac-btn off' + (s.state==='off' ? ' active' : '') + '" data-ac-state="off">Eteinte</button>';
+  [18,19,20,21,22,23].forEach(function(t){
+    var active = s.state==='on' && s.setpoint===t;
+    html += '<button class="ac-btn' + (active ? ' active' : '') + '" data-ac-state="on" data-ac-setpoint="' + t + '">' + t + 'C</button>';
+  });
+  html += '</div>';
+
+  html += '<div id="ac-feedback"></div>';
+
+  if (!hasToken) {
+    html += '<div class="ac-token-row"><span>Token GitHub :</span><input type="password" id="ac-token-input" placeholder="ghp_..."><button id="ac-token-save">Enregistrer</button></div>';
+    html += '<div style="font-size:9px;color:var(--text-dimmer);margin-top:4px">Le token reste uniquement sur cet appareil (jamais commite). Necessite un Personal Access Token GitHub avec droit "contents: write" sur le repo.</div>';
+  } else {
+    html += '<div class="ac-token-row"><span>Token GitHub configure sur cet appareil.</span><button id="ac-token-clear">Oublier le token</button></div>';
   }
 
   html += '</div>';
   return html;
+}
+
+function bindAcPanel() {
+  var mount = document.getElementById('ac-panel-mount');
+  if (!mount) return;
+  mount.innerHTML = renderAcPanel();
+
+  var feedback = document.getElementById('ac-feedback');
+
+  function setFeedback(msg, isError) {
+    if (!feedback) feedback = document.getElementById('ac-feedback');
+    if (!feedback) return;
+    feedback.innerHTML = msg ? '<div class="' + (isError ? 'ac-error' : 'ac-saving') + '" style="margin-top:8px">' + msg + '</div>' : '';
+  }
+
+  var btns = mount.querySelectorAll('.ac-btn');
+  for (var i = 0; i < btns.length; i++) {
+    (function(btn){
+      btn.addEventListener('click', function(){
+        if (!ACState.hasToken()) {
+          setFeedback('Configurez d abord un token GitHub ci-dessous.', true);
+          return;
+        }
+        var state = btn.dataset.acState;
+        var setpoint = btn.dataset.acSetpoint ? parseInt(btn.dataset.acSetpoint, 10) : null;
+        setFeedback('Enregistrement en cours...', false);
+        ACState.setState(state, setpoint).then(function(){
+          setFeedback('Enregistre.', false);
+          bindAcPanel();
+        }).catch(function(err){
+          setFeedback('Erreur : ' + err.message, true);
+        });
+      });
+    })(btns[i]);
+  }
+
+  var tokenSave = document.getElementById('ac-token-save');
+  if (tokenSave) {
+    tokenSave.addEventListener('click', function(){
+      var input = document.getElementById('ac-token-input');
+      var val = input ? input.value.trim() : '';
+      if (!val) return;
+      ACState.setToken(val);
+      bindAcPanel();
+    });
+  }
+  var tokenClear = document.getElementById('ac-token-clear');
+  if (tokenClear) {
+    tokenClear.addEventListener('click', function(){
+      ACState.setToken('');
+      bindAcPanel();
+    });
+  }
 }
 
 // ── Render alerts ──────────────────────────────────────
@@ -2190,10 +2445,11 @@ function initPeriodSelector() {
 // ── LOAD DATA ──────────────────────────────────────────
 function loadData() {
   var t = Date.now();
-  // Charger les donnees actuelles + l index des fichiers historiques
+  // Charger les donnees actuelles + l index des fichiers historiques + l etat clim manuel
   Promise.all([
     fetch('weather-data.json?t=' + t),
-    fetch('history-index.json?t=' + t).catch(function(){ return null; })
+    fetch('history-index.json?t=' + t).catch(function(){ return null; }),
+    ACState.load()
   ]).then(function(results) {
     var r1 = results[0], r2 = results[1];
     if (!r1.ok) throw new Error('weather-data.json introuvable');
@@ -2224,6 +2480,7 @@ function loadData() {
     renderSunBar(LAT, LON);
     renderMetrics(CURRENT_DATA, ALL_ENTRIES);
     renderAlerts(CURRENT_DATA, ALL_ENTRIES);
+    bindAcPanel();
 
   }).catch(function(e) {
     console.error(e);
