@@ -1474,6 +1474,17 @@
       "co2": 981,
       "noise": 39,
       "outdoor_source": "netatmo"
+    },
+    {
+      "timestamp": "2026-06-30T18:00:51.275Z",
+      "temp_out": 31,
+      "temp_in": 22.5,
+      "hum_out": 49,
+      "hum_in": 49,
+      "pressure": 1026.1,
+      "co2": 969,
+      "noise": 39,
+      "outdoor_source": "netatmo"
     }
   ]
 }
