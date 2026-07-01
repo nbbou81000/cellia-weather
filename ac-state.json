@@ -1,6 +1,12 @@
 {
-  "state": "off",
-  "setpoint": null,
-  "updated_at": null,
-  "history": []
+  "state": "on",
+  "setpoint": 22,
+  "updated_at": "2026-07-01T10:36:43.612Z",
+  "history": [
+    {
+      "timestamp": "2026-07-01T10:36:43.612Z",
+      "state": "on",
+      "setpoint": 22
+    }
+  ]
 }
