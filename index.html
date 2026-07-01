@@ -580,10 +580,10 @@ var dark = true;
 function setTheme(d) {
   dark = d; root.dataset.theme = d ? 'dark' : 'light';
   tbtn.textContent = d ? 'Mode clair' : 'Mode sombre';
-  localStorage.setItem('ct', d ? 'dark' : 'light');
+  try { localStorage.setItem('ct', d ? 'dark' : 'light'); } catch(e) {}
 }
 tbtn.onclick = function() { setTheme(!dark); };
-var sv = localStorage.getItem('ct');
+var sv; try { sv = localStorage.getItem('ct'); } catch(e) { sv = null; }
 if (sv) setTheme(sv === 'dark');
 
 // ── Clock ──────────────────────────────────────────────
