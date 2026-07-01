@@ -2300,6 +2300,7 @@ function render(data, entries) {
   renderSunBar(LAT, LON);
   renderMetrics(data, ALL_ENTRIES);
   renderAlerts(data, ALL_ENTRIES);
+  bindAcPanel();
   renderForecast(ALL_ENTRIES);
   renderChartTemp(chartRanges.temp, compareActive.temp);
   renderChartHum(chartRanges.hum, compareActive.hum);
