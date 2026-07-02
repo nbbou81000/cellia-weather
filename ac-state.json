@@ -1,7 +1,7 @@
 {
-  "state": "on",
-  "setpoint": 20,
-  "updated_at": "2026-07-02T15:19:20.984Z",
+  "state": "off",
+  "setpoint": null,
+  "updated_at": "2026-07-02T19:35:06.235Z",
   "history": [
     {
       "timestamp": "2026-07-01T10:36:43.612Z",
@@ -32,6 +32,11 @@
       "timestamp": "2026-07-02T15:19:20.984Z",
       "state": "on",
       "setpoint": 20
+    },
+    {
+      "timestamp": "2026-07-02T19:35:06.235Z",
+      "state": "off",
+      "setpoint": null
     }
   ]
 }
