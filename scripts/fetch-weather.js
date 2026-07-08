@@ -271,6 +271,47 @@ if (monthData.entries.length > MONTH_MAX) {
 fs.writeFileSync(mFile, JSON.stringify(monthData, null, 2), 'utf-8');
 console.log('history-' + key + '.json ecrit (' + monthData.entries.length + ' entrees)');
 
+// ── Feed leger pour TRMNL (fenetre glissante 24h, <10KB) ───────────────────
+const TRMNL_OUT    = path.join(ROOT, 'trmnl-feed.json');
+const TRMNL_WINDOW = 96; // 96 x 15 min = 24h
+
+// En debut de mois, le fichier du mois courant peut ne pas avoir encore
+// 96 entrees : on complete avec la fin du mois precedent si besoin.
+let windowEntries = monthData.entries.slice(-TRMNL_WINDOW);
+if (windowEntries.length < TRMNL_WINDOW) {
+  const prevDate = new Date(now);
+  prevDate.setUTCMonth(prevDate.getUTCMonth() - 1);
+  const prevKey  = monthKey(prevDate);
+  const prevFile = monthFile(prevKey);
+  const prevData = readJSON(prevFile, { entries: [] });
+  const missing  = TRMNL_WINDOW - windowEntries.length;
+  windowEntries  = prevData.entries.slice(-missing).concat(windowEntries);
+}
+
+const trmnlFeed = {
+  updated_at: now,
+  current: {
+    temp_in:  parsed.indoor.temperature,
+    temp_out: outdoor.temperature,
+    hum_in:   parsed.indoor.humidity,
+    hum_out:  outdoor.humidity,
+    co2:      parsed.indoor.co2,
+    pressure: parsed.indoor.pressure,
+  },
+  labels: windowEntries.map(function(e) {
+    const d = new Date(e.timestamp);
+    return String(d.getUTCHours()).padStart(2, '0') + 'h';
+  }),
+  temp_in:  windowEntries.map(function(e) { return e.temp_in; }),
+  temp_out: windowEntries.map(function(e) { return e.temp_out; }),
+  hum_in:   windowEntries.map(function(e) { return e.hum_in; }),
+  co2:      windowEntries.map(function(e) { return e.co2; }),
+};
+
+fs.writeFileSync(TRMNL_OUT, JSON.stringify(trmnlFeed), 'utf-8');
+console.log('trmnl-feed.json ecrit (' + windowEntries.length + ' points, ' +
+  Buffer.byteLength(JSON.stringify(trmnlFeed)) + ' octets)');
+
 // ── Mise a jour de l index ────────────────────────────────────────────────
 let index = readJSON(INDEX_OUT, { files: [], last_updated: now });
 
