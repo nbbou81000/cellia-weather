@@ -288,6 +288,12 @@ if (windowEntries.length < TRMNL_WINDOW) {
   windowEntries  = prevData.entries.slice(-missing).concat(windowEntries);
 }
 
+function minMax(values) {
+  const nums = values.filter(function(v) { return typeof v === 'number' && !isNaN(v); });
+  if (!nums.length) return { min: null, max: null };
+  return { min: Math.min.apply(null, nums), max: Math.max.apply(null, nums) };
+}
+
 const trmnlFeed = {
   updated_at: now,
   current: {
@@ -299,18 +305,23 @@ const trmnlFeed = {
     pressure: parsed.indoor.pressure,
     noise:    parsed.indoor.noise,
   },
-  labels: windowEntries.map(function(e) {
-    const d = new Date(e.timestamp);
-    return String(d.getUTCHours()).padStart(2, '0') + 'h';
-  }),
   series: {
-    temp_in:  windowEntries.map(function(e) { return e.temp_in; }),
-    temp_out: windowEntries.map(function(e) { return e.temp_out; }),
-    hum_in:   windowEntries.map(function(e) { return e.hum_in; }),
-    hum_out:  windowEntries.map(function(e) { return e.hum_out; }),
-    co2:      windowEntries.map(function(e) { return e.co2; }),
-    pressure: windowEntries.map(function(e) { return e.pressure; }),
-    noise:    windowEntries.map(function(e) { return e.noise; }),
+    temp_in:  windowEntries.map(function(e) { return [new Date(e.timestamp).getTime(), e.temp_in]; }),
+    temp_out: windowEntries.map(function(e) { return [new Date(e.timestamp).getTime(), e.temp_out]; }),
+    hum_in:   windowEntries.map(function(e) { return [new Date(e.timestamp).getTime(), e.hum_in]; }),
+    hum_out:  windowEntries.map(function(e) { return [new Date(e.timestamp).getTime(), e.hum_out]; }),
+    co2:      windowEntries.map(function(e) { return [new Date(e.timestamp).getTime(), e.co2]; }),
+    pressure: windowEntries.map(function(e) { return [new Date(e.timestamp).getTime(), e.pressure]; }),
+    noise:    windowEntries.map(function(e) { return [new Date(e.timestamp).getTime(), e.noise]; }),
+  },
+  stats: {
+    temp_in:  minMax(windowEntries.map(function(e) { return e.temp_in; })),
+    temp_out: minMax(windowEntries.map(function(e) { return e.temp_out; })),
+    hum_in:   minMax(windowEntries.map(function(e) { return e.hum_in; })),
+    hum_out:  minMax(windowEntries.map(function(e) { return e.hum_out; })),
+    co2:      minMax(windowEntries.map(function(e) { return e.co2; })),
+    pressure: minMax(windowEntries.map(function(e) { return e.pressure; })),
+    noise:    minMax(windowEntries.map(function(e) { return e.noise; })),
   },
 };
 
