@@ -297,15 +297,21 @@ const trmnlFeed = {
     hum_out:  outdoor.humidity,
     co2:      parsed.indoor.co2,
     pressure: parsed.indoor.pressure,
+    noise:    parsed.indoor.noise,
   },
   labels: windowEntries.map(function(e) {
     const d = new Date(e.timestamp);
     return String(d.getUTCHours()).padStart(2, '0') + 'h';
   }),
-  temp_in:  windowEntries.map(function(e) { return e.temp_in; }),
-  temp_out: windowEntries.map(function(e) { return e.temp_out; }),
-  hum_in:   windowEntries.map(function(e) { return e.hum_in; }),
-  co2:      windowEntries.map(function(e) { return e.co2; }),
+  series: {
+    temp_in:  windowEntries.map(function(e) { return e.temp_in; }),
+    temp_out: windowEntries.map(function(e) { return e.temp_out; }),
+    hum_in:   windowEntries.map(function(e) { return e.hum_in; }),
+    hum_out:  windowEntries.map(function(e) { return e.hum_out; }),
+    co2:      windowEntries.map(function(e) { return e.co2; }),
+    pressure: windowEntries.map(function(e) { return e.pressure; }),
+    noise:    windowEntries.map(function(e) { return e.noise; }),
+  },
 };
 
 fs.writeFileSync(TRMNL_OUT, JSON.stringify(trmnlFeed), 'utf-8');
