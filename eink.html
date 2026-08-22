@@ -5,9 +5,14 @@
 <title>CelliA — E-Ink</title>
 <style>
   /* ============================================================
-     Page e-ink dediee pour le plugin TRMNL "Screenshot"
-     Contraintes : noir pur / blanc pur uniquement, pas de degrade,
-     pas de couleur d'accent, canvas fixe 800x480 (TRMNL OG).
+     Page e-ink dediee pour le plugin TRMNL "Screenshot".
+     IMPORTANT : ce fichier est un TEMPLATE. Il n'est jamais servi
+     tel quel : le script generate-eink.js l'utilise pour produire
+     eink.html avec les donnees deja injectees en dur (pas de fetch()
+     au moment de la capture -> aucune dependance au comportement
+     reseau du service de rendu TRMNL).
+     Contraintes visuelles : noir pur / blanc pur uniquement, pas de
+     degrade, pas de couleur d'accent, canvas fixe 800x480 (TRMNL OG).
      ============================================================ */
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -29,7 +34,6 @@
     padding: 18px 24px;
   }
 
-  /* -- Bandeau titre -- */
   .header {
     display: flex;
     justify-content: space-between;
@@ -39,79 +43,20 @@
     margin-bottom: 8px;
   }
 
-  .brand {
-    font-size: 19px;
-    font-weight: 700;
-    letter-spacing: 0.3px;
-  }
+  .brand { font-size: 19px; font-weight: 700; letter-spacing: 0.3px; }
+  .brand .place { font-weight: 400; font-size: 14px; margin-left: 8px; }
+  .condition { font-size: 14px; font-weight: 600; }
+  .updated { font-size: 14px; font-weight: 600; }
 
-  .brand .place {
-    font-weight: 400;
-    font-size: 14px;
-    margin-left: 8px;
-  }
-
-  .condition {
-    font-size: 14px;
-    font-weight: 600;
-  }
-
-  .updated {
-    font-size: 14px;
-    font-weight: 600;
-  }
-
-  /* -- Bloc temperatures compact -- */
-  .temps {
-    display: flex;
-    align-items: center;
-    margin-bottom: 8px;
-  }
-
-  .temp-block {
-    flex: 1;
-    display: flex;
-    align-items: baseline;
-    gap: 10px;
-  }
-
+  .temps { display: flex; align-items: center; margin-bottom: 8px; }
+  .temp-block { flex: 1; display: flex; align-items: baseline; gap: 10px; }
   .temp-block.right { justify-content: flex-end; text-align: right; }
+  .temp-label { font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; align-self: center; }
+  .temp-value { font-size: 54px; font-weight: 800; line-height: 1; letter-spacing: -1px; }
+  .temp-value .unit { font-size: 24px; font-weight: 400; margin-left: 2px; }
+  .temp-sub { font-size: 12px; align-self: center; color: #000; }
+  .divider-v { width: 3px; align-self: stretch; background: #000; margin: 0 20px; }
 
-  .temp-label {
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    align-self: center;
-  }
-
-  .temp-value {
-    font-size: 54px;
-    font-weight: 800;
-    line-height: 1;
-    letter-spacing: -1px;
-  }
-
-  .temp-value .unit {
-    font-size: 24px;
-    font-weight: 400;
-    margin-left: 2px;
-  }
-
-  .temp-sub {
-    font-size: 12px;
-    align-self: center;
-    color: #000;
-  }
-
-  .divider-v {
-    width: 3px;
-    align-self: stretch;
-    background: #000;
-    margin: 0 20px;
-  }
-
-  /* -- Bandeau stats fines -- */
   .stats-strip {
     display: flex;
     border-top: 2px solid #000;
@@ -119,62 +64,16 @@
     padding: 6px 0;
     margin-bottom: 10px;
   }
-
-  .stat-mini {
-    flex: 1;
-    text-align: center;
-    border-right: 1px solid #000;
-    font-size: 13px;
-  }
-
+  .stat-mini { flex: 1; text-align: center; border-right: 1px solid #000; font-size: 13px; }
   .stat-mini:last-child { border-right: none; }
-
   .stat-mini b { font-weight: 700; }
 
-  /* -- Zone graphiques -- */
-  .charts {
-    display: flex;
-    flex: 1;
-    gap: 14px;
-    min-height: 0;
-  }
-
-  .chart-box {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-  }
-
-  .chart-title {
-    font-size: 12px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 4px;
-  }
-
-  .chart-range {
-    font-size: 10px;
-    font-weight: 400;
-    text-transform: none;
-    letter-spacing: 0;
-  }
-
-  .chart-box canvas {
-    flex: 1;
-    width: 100%;
-    display: block;
-  }
-
-  .chart-unavailable {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-    border: 1px dashed #000;
-  }
+  .charts { display: flex; flex: 1; gap: 14px; min-height: 0; }
+  .chart-box { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .chart-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+  .chart-range { font-size: 10px; font-weight: 400; text-transform: none; letter-spacing: 0; }
+  .chart-box canvas { flex: 1; width: 100%; display: block; }
+  .chart-unavailable { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 12px; border: 1px dashed #000; }
 </style>
 </head>
 <body>
@@ -193,9 +92,7 @@
       <span class="temp-value" id="ext-temp">--<span class="unit">&deg;C</span></span>
       <span class="temp-sub" id="ext-sub">Hum. --%</span>
     </div>
-
     <div class="divider-v"></div>
-
     <div class="temp-block right">
       <span class="temp-sub" id="int-sub">Hum. --%</span>
       <span class="temp-value" id="int-temp">--<span class="unit">&deg;C</span></span>
@@ -229,15 +126,21 @@
 </div>
 
 <script>
-  // ── Point de rosee - formule de Magnus ──────────────────
+  const EINK_DATA = {"current":{"last_updated":"2026-08-22T13:13:22.144Z","station_name":"Station meteo","place":{"city":"Cagnac-les-Mines","country":"FR","timezone":"Europe/Paris","location":[1.9667,43.9333]},"indoor":{"temperature":24.1,"humidity":59,"co2":1138,"noise":37,"pressure":1022.9,"abs_pressure":985.1,"module_name":"Etage"},"outdoor":{"temperature":26.1,"humidity":52,"source":"netatmo"},"outdoor_source":"netatmo"},"temp24":[{"t":"2026-08-21T13:30:55.198Z","out":21.2,"in":22.2},{"t":"2026-08-21T13:45:36.410Z","out":21.2,"in":22.2},{"t":"2026-08-21T14:01:00.016Z","out":21.4,"in":22},{"t":"2026-08-21T14:15:38.169Z","out":21.5,"in":22},{"t":"2026-08-21T14:30:52.298Z","out":21.8,"in":21.9},{"t":"2026-08-21T14:45:34.809Z","out":21.9,"in":21.8},{"t":"2026-08-21T15:01:11.393Z","out":22.2,"in":21.8},{"t":"2026-08-21T15:15:41.815Z","out":22.3,"in":21.8},{"t":"2026-08-21T15:30:53.726Z","out":22.4,"in":21.8},{"t":"2026-08-21T15:45:36.570Z","out":22.6,"in":21.8},{"t":"2026-08-21T16:01:03.837Z","out":22.9,"in":21.7},{"t":"2026-08-21T16:15:37.986Z","out":23.1,"in":21.6},{"t":"2026-08-21T16:45:35.584Z","out":23,"in":21.6},{"t":"2026-08-21T17:01:01.999Z","out":23,"in":21.5},{"t":"2026-08-21T17:15:35.504Z","out":22.9,"in":21.5},{"t":"2026-08-21T17:45:35.643Z","out":22.6,"in":21.4},{"t":"2026-08-21T18:01:01.809Z","out":22.5,"in":21.4},{"t":"2026-08-21T18:15:39.942Z","out":22.4,"in":21.4},{"t":"2026-08-21T18:45:39.274Z","out":22.1,"in":21.9},{"t":"2026-08-21T19:01:00.553Z","out":21.9,"in":22},{"t":"2026-08-21T19:15:39.315Z","out":21.6,"in":22.2},{"t":"2026-08-21T19:30:52.324Z","out":21.5,"in":22.2},{"t":"2026-08-21T19:45:35.012Z","out":21.4,"in":22.3},{"t":"2026-08-21T20:00:59.937Z","out":21,"in":22.4},{"t":"2026-08-21T20:15:41.472Z","out":20.9,"in":22.4},{"t":"2026-08-21T20:30:48.784Z","out":20.7,"in":22.4},{"t":"2026-08-21T20:45:39.979Z","out":20.6,"in":22.5},{"t":"2026-08-21T21:01:03.115Z","out":20.5,"in":22.5},{"t":"2026-08-21T21:15:35.151Z","out":20.4,"in":22.5},{"t":"2026-08-21T21:30:51.178Z","out":20.3,"in":22.5},{"t":"2026-08-21T21:45:37.805Z","out":20.3,"in":22.5},{"t":"2026-08-21T22:01:04.006Z","out":20.2,"in":22.5},{"t":"2026-08-21T22:15:40.247Z","out":20.2,"in":22.5},{"t":"2026-08-21T22:30:54.755Z","out":20.1,"in":22.5},{"t":"2026-08-21T22:45:35.524Z","out":20,"in":22.5},{"t":"2026-08-21T23:01:01.781Z","out":19.9,"in":22.5},{"t":"2026-08-21T23:15:36.443Z","out":19.8,"in":22.5},{"t":"2026-08-21T23:31:02.326Z","out":19.6,"in":22.5},{"t":"2026-08-21T23:45:36.798Z","out":19.6,"in":22.5},{"t":"2026-08-22T00:01:01.988Z","out":19.5,"in":22.5},{"t":"2026-08-22T00:15:42.380Z","out":19.5,"in":22.5},{"t":"2026-08-22T00:30:50.714Z","out":19.3,"in":22.5},{"t":"2026-08-22T00:45:34.486Z","out":19.2,"in":22.5},{"t":"2026-08-22T01:00:57.649Z","out":19.1,"in":22.5},{"t":"2026-08-22T01:15:35.879Z","out":19,"in":22.4},{"t":"2026-08-22T01:30:47.415Z","out":18.8,"in":22.4},{"t":"2026-08-22T01:45:36.504Z","out":18.7,"in":22.4},{"t":"2026-08-22T02:01:00.695Z","out":18.5,"in":22.4},{"t":"2026-08-22T02:15:39.295Z","out":18.4,"in":22.4},{"t":"2026-08-22T02:30:53.309Z","out":18.3,"in":22.3},{"t":"2026-08-22T02:45:39.658Z","out":18.2,"in":22.3},{"t":"2026-08-22T03:00:59.604Z","out":18,"in":22.3},{"t":"2026-08-22T03:15:37.475Z","out":18,"in":22.3},{"t":"2026-08-22T03:30:51.976Z","out":17.8,"in":22.3},{"t":"2026-08-22T03:45:38.108Z","out":17.8,"in":22.3},{"t":"2026-08-22T04:01:05.359Z","out":17.6,"in":22.2},{"t":"2026-08-22T04:15:37.250Z","out":17.6,"in":22.2},{"t":"2026-08-22T04:30:57.734Z","out":17.5,"in":22.2},{"t":"2026-08-22T04:45:36.332Z","out":17.4,"in":22.2},{"t":"2026-08-22T05:15:37.840Z","out":17.2,"in":22.1},{"t":"2026-08-22T05:30:49.420Z","out":17.2,"in":22.1},{"t":"2026-08-22T05:45:35.555Z","out":17.2,"in":22.2},{"t":"2026-08-22T06:01:02.683Z","out":17.1,"in":22.2},{"t":"2026-08-22T06:15:36.275Z","out":17.2,"in":22.2},{"t":"2026-08-22T06:30:55.758Z","out":17.2,"in":22.2},{"t":"2026-08-22T06:45:36.092Z","out":17.3,"in":22.2},{"t":"2026-08-22T07:01:03.249Z","out":17.4,"in":22.3},{"t":"2026-08-22T07:15:38.055Z","out":17.6,"in":22.3},{"t":"2026-08-22T07:30:53.953Z","out":17.8,"in":22.4},{"t":"2026-08-22T07:45:39.894Z","out":18.1,"in":22.5},{"t":"2026-08-22T08:00:58.801Z","out":18.2,"in":22.6},{"t":"2026-08-22T08:15:40.362Z","out":18.6,"in":22.7},{"t":"2026-08-22T08:30:51.845Z","out":18.7,"in":22.7},{"t":"2026-08-22T08:45:41.392Z","out":19,"in":22.8},{"t":"2026-08-22T09:01:05.730Z","out":19.2,"in":22.9},{"t":"2026-08-22T09:15:37.984Z","out":19.6,"in":23},{"t":"2026-08-22T09:45:40.906Z","out":20.2,"in":23.2},{"t":"2026-08-22T10:01:01.922Z","out":20.5,"in":23.2},{"t":"2026-08-22T10:15:39.390Z","out":21,"in":23.1},{"t":"2026-08-22T10:30:53.950Z","out":21.3,"in":23},{"t":"2026-08-22T10:45:35.965Z","out":21.7,"in":22.9},{"t":"2026-08-22T11:00:59.906Z","out":22,"in":22.8},{"t":"2026-08-22T11:15:37.577Z","out":22.5,"in":22.7},{"t":"2026-08-22T11:30:51.448Z","out":22.8,"in":22.7},{"t":"2026-08-22T11:45:39.442Z","out":23.2,"in":23.1},{"t":"2026-08-22T12:01:01.394Z","out":23.5,"in":23.3},{"t":"2026-08-22T12:15:38.777Z","out":23.7,"in":23.5},{"t":"2026-08-22T12:30:51.903Z","out":24.1,"in":23.8},{"t":"2026-08-22T12:45:39.880Z","out":24.5,"in":23.8},{"t":"2026-08-22T13:01:02.742Z","out":25.6,"in":24.1},{"t":"2026-08-22T13:13:22.144Z","out":26.1,"in":24.1}],"press24":[{"t":"2026-08-21T13:30:55.198Z","p":1021.7},{"t":"2026-08-21T13:45:36.410Z","p":1021.8},{"t":"2026-08-21T14:01:00.016Z","p":1021.9},{"t":"2026-08-21T14:15:38.169Z","p":1021.8},{"t":"2026-08-21T14:30:52.298Z","p":1021.9},{"t":"2026-08-21T14:45:34.809Z","p":1021.9},{"t":"2026-08-21T15:01:11.393Z","p":1022},{"t":"2026-08-21T15:15:41.815Z","p":1022.1},{"t":"2026-08-21T15:30:53.726Z","p":1022},{"t":"2026-08-21T15:45:36.570Z","p":1021.9},{"t":"2026-08-21T16:01:03.837Z","p":1021.9},{"t":"2026-08-21T16:15:37.986Z","p":1021.9},{"t":"2026-08-21T16:45:35.584Z","p":1022.1},{"t":"2026-08-21T17:01:01.999Z","p":1022.1},{"t":"2026-08-21T17:15:35.504Z","p":1022.1},{"t":"2026-08-21T17:45:35.643Z","p":1022.2},{"t":"2026-08-21T18:01:01.809Z","p":1022.2},{"t":"2026-08-21T18:15:39.942Z","p":1022.4},{"t":"2026-08-21T18:45:39.274Z","p":1022.6},{"t":"2026-08-21T19:01:00.553Z","p":1022.7},{"t":"2026-08-21T19:15:39.315Z","p":1023},{"t":"2026-08-21T19:30:52.324Z","p":1023.2},{"t":"2026-08-21T19:45:35.012Z","p":1023.3},{"t":"2026-08-21T20:00:59.937Z","p":1023.7},{"t":"2026-08-21T20:15:41.472Z","p":1023.7},{"t":"2026-08-21T20:30:48.784Z","p":1023.9},{"t":"2026-08-21T20:45:39.979Z","p":1023.9},{"t":"2026-08-21T21:01:03.115Z","p":1024},{"t":"2026-08-21T21:15:35.151Z","p":1024.2},{"t":"2026-08-21T21:30:51.178Z","p":1024.2},{"t":"2026-08-21T21:45:37.805Z","p":1024.2},{"t":"2026-08-21T22:01:04.006Z","p":1024.3},{"t":"2026-08-21T22:15:40.247Z","p":1024.3},{"t":"2026-08-21T22:30:54.755Z","p":1024.2},{"t":"2026-08-21T22:45:35.524Z","p":1024.2},{"t":"2026-08-21T23:01:01.781Z","p":1024.2},{"t":"2026-08-21T23:15:36.443Z","p":1024.1},{"t":"2026-08-21T23:31:02.326Z","p":1024.2},{"t":"2026-08-21T23:45:36.798Z","p":1024.3},{"t":"2026-08-22T00:01:01.988Z","p":1024.4},{"t":"2026-08-22T00:15:42.380Z","p":1024.3},{"t":"2026-08-22T00:30:50.714Z","p":1024.2},{"t":"2026-08-22T00:45:34.486Z","p":1024.2},{"t":"2026-08-22T01:00:57.649Z","p":1024.1},{"t":"2026-08-22T01:15:35.879Z","p":1024.1},{"t":"2026-08-22T01:30:47.415Z","p":1024.1},{"t":"2026-08-22T01:45:36.504Z","p":1024.1},{"t":"2026-08-22T02:01:00.695Z","p":1024.1},{"t":"2026-08-22T02:15:39.295Z","p":1024},{"t":"2026-08-22T02:30:53.309Z","p":1023.9},{"t":"2026-08-22T02:45:39.658Z","p":1023.9},{"t":"2026-08-22T03:00:59.604Z","p":1023.9},{"t":"2026-08-22T03:15:37.475Z","p":1023.9},{"t":"2026-08-22T03:30:51.976Z","p":1024},{"t":"2026-08-22T03:45:38.108Z","p":1024},{"t":"2026-08-22T04:01:05.359Z","p":1024},{"t":"2026-08-22T04:15:37.250Z","p":1024},{"t":"2026-08-22T04:30:57.734Z","p":1023.9},{"t":"2026-08-22T04:45:36.332Z","p":1023.9},{"t":"2026-08-22T05:15:37.840Z","p":1024.1},{"t":"2026-08-22T05:30:49.420Z","p":1024.1},{"t":"2026-08-22T05:45:35.555Z","p":1024.2},{"t":"2026-08-22T06:01:02.683Z","p":1024.3},{"t":"2026-08-22T06:15:36.275Z","p":1024.4},{"t":"2026-08-22T06:30:55.758Z","p":1024.5},{"t":"2026-08-22T06:45:36.092Z","p":1024.6},{"t":"2026-08-22T07:01:03.249Z","p":1024.5},{"t":"2026-08-22T07:15:38.055Z","p":1024.6},{"t":"2026-08-22T07:30:53.953Z","p":1024.7},{"t":"2026-08-22T07:45:39.894Z","p":1024.6},{"t":"2026-08-22T08:00:58.801Z","p":1024.6},{"t":"2026-08-22T08:15:40.362Z","p":1024.7},{"t":"2026-08-22T08:30:51.845Z","p":1024.7},{"t":"2026-08-22T08:45:41.392Z","p":1024.7},{"t":"2026-08-22T09:01:05.730Z","p":1024.7},{"t":"2026-08-22T09:15:37.984Z","p":1024.7},{"t":"2026-08-22T09:45:40.906Z","p":1024.6},{"t":"2026-08-22T10:01:01.922Z","p":1024.5},{"t":"2026-08-22T10:15:39.390Z","p":1024.4},{"t":"2026-08-22T10:30:53.950Z","p":1024.4},{"t":"2026-08-22T10:45:35.965Z","p":1024.3},{"t":"2026-08-22T11:00:59.906Z","p":1024.3},{"t":"2026-08-22T11:15:37.577Z","p":1024.1},{"t":"2026-08-22T11:30:51.448Z","p":1024},{"t":"2026-08-22T11:45:39.442Z","p":1023.7},{"t":"2026-08-22T12:01:01.394Z","p":1023.7},{"t":"2026-08-22T12:15:38.777Z","p":1023.6},{"t":"2026-08-22T12:30:51.903Z","p":1023.3},{"t":"2026-08-22T12:45:39.880Z","p":1023.3},{"t":"2026-08-22T13:01:02.742Z","p":1023},{"t":"2026-08-22T13:13:22.144Z","p":1022.9}],"temp7":[{"t":"2026-08-15T13:15:42.223Z","out":32.9},{"t":"2026-08-15T14:45:40.755Z","out":36.8},{"t":"2026-08-15T16:15:39.285Z","out":34.6},{"t":"2026-08-15T17:45:38.462Z","out":26.3},{"t":"2026-08-15T19:15:39.961Z","out":24.3},{"t":"2026-08-15T20:45:37.317Z","out":23.9},{"t":"2026-08-15T22:15:41.975Z","out":23.5},{"t":"2026-08-16T00:15:37.424Z","out":23.2},{"t":"2026-08-16T01:45:37.732Z","out":22.9},{"t":"2026-08-16T03:15:38.596Z","out":22.5},{"t":"2026-08-16T04:45:35.891Z","out":22.3},{"t":"2026-08-16T06:15:41.801Z","out":22.3},{"t":"2026-08-16T07:45:35.132Z","out":22.8},{"t":"2026-08-16T09:15:35.211Z","out":22.9},{"t":"2026-08-16T11:01:03.807Z","out":23.4},{"t":"2026-08-16T12:30:52.353Z","out":23.9},{"t":"2026-08-16T14:01:02.981Z","out":27.1},{"t":"2026-08-16T15:30:51.301Z","out":29.1},{"t":"2026-08-16T17:01:03.703Z","out":28.1},{"t":"2026-08-16T18:30:53.711Z","out":27.6},{"t":"2026-08-16T20:00:59.905Z","out":26.4},{"t":"2026-08-16T21:30:51.564Z","out":25.4},{"t":"2026-08-16T23:00:57.473Z","out":24.8},{"t":"2026-08-17T00:30:49.170Z","out":24.2},{"t":"2026-08-17T02:01:00.904Z","out":23.6},{"t":"2026-08-17T03:30:48.394Z","out":23.2},{"t":"2026-08-17T05:01:01.337Z","out":22.7},{"t":"2026-08-17T06:30:53.160Z","out":22.4},{"t":"2026-08-17T08:01:09.415Z","out":23.1},{"t":"2026-08-17T09:30:52.532Z","out":24.8},{"t":"2026-08-17T11:01:10.104Z","out":26.3},{"t":"2026-08-17T12:45:42.098Z","out":28.2},{"t":"2026-08-17T14:15:41.508Z","out":28.5},{"t":"2026-08-17T16:15:37.743Z","out":30.1},{"t":"2026-08-17T18:45:37.856Z","out":27.5},{"t":"2026-08-17T20:15:37.763Z","out":26.3},{"t":"2026-08-17T21:45:37.494Z","out":25.4},{"t":"2026-08-17T23:15:39.061Z","out":24.5},{"t":"2026-08-18T00:45:34.205Z","out":23.8},{"t":"2026-08-18T02:15:36.868Z","out":23.1},{"t":"2026-08-18T04:01:03.534Z","out":22.7},{"t":"2026-08-18T05:30:52.646Z","out":22.4},{"t":"2026-08-18T07:01:00.551Z","out":22.5},{"t":"2026-08-18T08:45:36.390Z","out":23.5},{"t":"2026-08-18T10:15:35.588Z","out":24.7},{"t":"2026-08-18T11:45:36.485Z","out":27.1},{"t":"2026-08-18T13:15:39.464Z","out":29.1},{"t":"2026-08-18T14:45:36.080Z","out":32.6},{"t":"2026-08-18T16:15:37.521Z","out":33.5},{"t":"2026-08-18T17:45:38.442Z","out":30.8},{"t":"2026-08-18T19:15:36.328Z","out":29.1},{"t":"2026-08-18T20:45:36.036Z","out":27.5},{"t":"2026-08-18T22:30:53.600Z","out":26.3},{"t":"2026-08-19T00:15:36.314Z","out":25.2},{"t":"2026-08-19T01:45:36.093Z","out":24.2},{"t":"2026-08-19T03:15:40.370Z","out":23.3},{"t":"2026-08-19T04:45:35.604Z","out":22.4},{"t":"2026-08-19T06:15:37.058Z","out":22.1},{"t":"2026-08-19T07:45:39.200Z","out":23.2},{"t":"2026-08-19T09:15:40.288Z","out":26.7},{"t":"2026-08-19T10:45:36.960Z","out":27},{"t":"2026-08-19T12:15:36.556Z","out":29.1},{"t":"2026-08-19T14:01:01.760Z","out":33.7},{"t":"2026-08-19T15:30:52.898Z","out":35.4},{"t":"2026-08-19T17:01:01.638Z","out":32.7},{"t":"2026-08-19T18:45:38.361Z","out":27.9},{"t":"2026-08-19T20:15:40.263Z","out":25.2},{"t":"2026-08-19T21:45:52.414Z","out":23.8},{"t":"2026-08-19T23:15:35.907Z","out":22.2},{"t":"2026-08-20T00:45:34.790Z","out":25.2},{"t":"2026-08-20T02:15:38.136Z","out":24.3},{"t":"2026-08-20T04:01:00.477Z","out":23.5},{"t":"2026-08-20T05:30:47.145Z","out":22.8},{"t":"2026-08-20T07:01:01.777Z","out":23},{"t":"2026-08-20T08:30:50.021Z","out":23.9},{"t":"2026-08-20T10:00:59.997Z","out":24.4},{"t":"2026-08-20T11:45:38.023Z","out":25.8},{"t":"2026-08-20T13:30:55.712Z","out":28.8},{"t":"2026-08-20T15:01:04.248Z","out":31.2},{"t":"2026-08-20T17:01:05.012Z","out":29.5},{"t":"2026-08-20T18:30:49.836Z","out":26.6},{"t":"2026-08-20T20:01:02.851Z","out":25.3},{"t":"2026-08-20T21:30:52.539Z","out":23.5},{"t":"2026-08-20T23:01:01.063Z","out":23},{"t":"2026-08-21T00:30:53.480Z","out":21.7},{"t":"2026-08-21T02:15:39.704Z","out":21.3},{"t":"2026-08-21T03:45:36.665Z","out":20.4},{"t":"2026-08-21T05:15:38.092Z","out":20.1},{"t":"2026-08-21T06:45:41.538Z","out":20},{"t":"2026-08-21T08:15:39.830Z","out":20.4},{"t":"2026-08-21T09:45:37.472Z","out":20.9},{"t":"2026-08-21T11:30:55.596Z","out":21.2},{"t":"2026-08-21T13:01:03.265Z","out":21.6},{"t":"2026-08-21T14:45:34.809Z","out":21.9},{"t":"2026-08-21T16:15:37.986Z","out":23.1},{"t":"2026-08-21T18:15:39.942Z","out":22.4},{"t":"2026-08-21T20:00:59.937Z","out":21},{"t":"2026-08-21T21:30:51.178Z","out":20.3},{"t":"2026-08-21T23:01:01.781Z","out":19.9},{"t":"2026-08-22T00:30:50.714Z","out":19.3},{"t":"2026-08-22T02:01:00.695Z","out":18.5},{"t":"2026-08-22T03:30:51.976Z","out":17.8},{"t":"2026-08-22T05:15:37.840Z","out":17.2},{"t":"2026-08-22T06:45:36.092Z","out":17.3},{"t":"2026-08-22T08:15:40.362Z","out":18.6},{"t":"2026-08-22T10:01:01.922Z","out":20.5},{"t":"2026-08-22T11:30:51.448Z","out":22.8},{"t":"2026-08-22T13:01:02.742Z","out":25.6}],"generated_at":"2026-08-22T13:13:22.236Z"};
+  // La ligne ci-dessus est remplacee par generate-eink.js avec :
+  // const EINK_DATA = { current: {...}, temp24: [...], temp7: [...], press24: [...], generated_at: "..." };
+  // Aucun fetch() ici : tout est deja present au chargement de la page,
+  // donc aucune dependance au comportement reseau du moteur de rendu TRMNL.
+</script>
+
+<script>
   function dewPoint(tempC, rh) {
     const a = 17.27, b = 237.7;
     const alpha = ((a * tempC) / (b + tempC)) + Math.log(rh / 100);
     return (b * alpha) / (a - alpha);
   }
 
-  // ── Reproduit la logique wxCond() du site principal CelliA ──
-  // (version sans tendance de pression : voir echange precedent)
+  // Reproduit la logique wxCond() (version sans tendance de pression)
   function wxCond(to, ho) {
     if (ho > 90) return 'Temps pluvieux probable';
     if (ho > 88) return 'Tres humide';
@@ -247,78 +150,28 @@
     return 'Conditions stables';
   }
 
-  // ── Chargement des donnees courantes (rapide, prioritaire) ──
-  async function loadCurrent() {
-    const res = await fetch('weather-data.json?t=' + Date.now());
-    return res.json();
-  }
-
-  // ── Chargement de l'historique du mois courant, avec timeout ──
-  // NB : on ne charge que le fichier du mois en cours pour rester
-  // simple et rapide. Limite connue : en tout debut de mois, les
-  // graphiques "24h" et "7 jours" peuvent manquer de profondeur
-  // (les points du mois precedent ne sont pas recuperes).
-  function monthKey(date) {
-    const y = date.getFullYear(), m = date.getMonth() + 1;
-    return y + '-' + (m < 10 ? '0' + m : m);
-  }
-
-  async function loadHistory(timeoutMs) {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
-    try {
-      const key = monthKey(new Date());
-      const res = await fetch('history-' + key + '.json?t=' + Date.now(), { signal: controller.signal });
-      clearTimeout(timer);
-      if (!res.ok) return null;
-      const data = await res.json();
-      return data.entries || [];
-    } catch (e) {
-      clearTimeout(timer);
-      return null;
-    }
-  }
-
-  // ── Utilitaires graphiques ──────────────────────────────
-  function downsample(arr, maxPoints) {
-    if (arr.length <= maxPoints) return arr;
-    const step = Math.ceil(arr.length / maxPoints);
-    return arr.filter((_, i) => i % step === 0);
-  }
-
   function fmtHM(ts) {
-    const d = new Date(ts);
-    return d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    return new Date(ts).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
   }
-
   function fmtDay(ts) {
-    const d = new Date(ts);
-    return d.toLocaleDateString('fr-FR', { weekday: 'short' });
+    return new Date(ts).toLocaleDateString('fr-FR', { weekday: 'short' });
   }
 
-  // Dessine un graphique en lignes monochrome sur un canvas.
-  // series: [{ values: [nums...], dash: bool }]
-  // labels: [timestamps...] (memes index que values)
   function drawLineChart(canvas, series, labels, opts) {
     opts = opts || {};
-    const dpr = 1; // pas de scaling: le tramage e-ink absorbe les aliasing
-    const w = canvas.clientWidth;
-    const h = canvas.clientHeight;
-    canvas.width = w * dpr;
-    canvas.height = h * dpr;
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    canvas.width = w; canvas.height = h;
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, w, h);
 
     const padTop = 14, padBottom = 16, padLeft = 4, padRight = 4;
-    const plotW = w - padLeft - padRight;
-    const plotH = h - padTop - padBottom;
+    const plotW = w - padLeft - padRight, plotH = h - padTop - padBottom;
 
     let allVals = [];
     series.forEach(s => { allVals = allVals.concat(s.values.filter(v => v != null)); });
     if (!allVals.length) return;
 
-    let min = Math.min(...allVals);
-    let max = Math.max(...allVals);
+    let min = Math.min(...allVals), max = Math.max(...allVals);
     if (min === max) { min -= 1; max += 1; }
     const margin = (max - min) * 0.1;
     min -= margin; max += margin;
@@ -327,7 +180,6 @@
     function xAt(i) { return padLeft + (n <= 1 ? 0 : (i / (n - 1)) * plotW); }
     function yAt(v) { return padTop + plotH - ((v - min) / (max - min)) * plotH; }
 
-    // Baseline
     ctx.strokeStyle = '#000';
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -335,17 +187,14 @@
     ctx.lineTo(padLeft + plotW, padTop + plotH);
     ctx.stroke();
 
-    // Min/max labels
     ctx.fillStyle = '#000';
     ctx.font = '10px Helvetica Neue, Arial, sans-serif';
     ctx.textBaseline = 'top';
     ctx.textAlign = 'left';
     ctx.fillText((opts.fmt ? opts.fmt(max) : max.toFixed(1)), padLeft, 0);
-    ctx.textAlign = 'left';
     ctx.textBaseline = 'bottom';
     ctx.fillText((opts.fmt ? opts.fmt(min) : min.toFixed(1)), padLeft, h);
 
-    // Lignes de donnees
     series.forEach(s => {
       ctx.beginPath();
       ctx.lineWidth = 2.4;
@@ -363,121 +212,107 @@
     ctx.setLineDash([]);
   }
 
-  async function main() {
-    // 1) Donnees courantes : rendu immediat, ne depend jamais de l'historique
-    try {
-      const data = await loadCurrent();
-      const ext = data.outdoor || {};
-      const intr = data.indoor || {};
-
-      document.getElementById('place').textContent =
-        (data.place && data.place.city) ? ' \u00b7 ' + data.place.city : '';
-
-      const updatedDate = data.last_updated ? new Date(data.last_updated) : null;
-      document.getElementById('updated').textContent = updatedDate
-        ? updatedDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-        : '--:--';
-
-      if (typeof ext.temperature === 'number') {
-        document.getElementById('ext-temp').innerHTML =
-          ext.temperature.toFixed(1) + '<span class="unit">&deg;C</span>';
-      }
-      if (typeof ext.humidity === 'number') {
-        document.getElementById('ext-sub').textContent = 'Hum. ' + ext.humidity + '%';
-      }
-      if (typeof intr.temperature === 'number') {
-        document.getElementById('int-temp').innerHTML =
-          intr.temperature.toFixed(1) + '<span class="unit">&deg;C</span>';
-      }
-      if (typeof intr.humidity === 'number') {
-        document.getElementById('int-sub').textContent = 'Hum. ' + intr.humidity + '%';
-      }
-      if (typeof intr.pressure === 'number') {
-        document.getElementById('pressure').textContent = intr.pressure.toFixed(1) + ' hPa';
-      }
-      if (typeof ext.temperature === 'number' && typeof ext.humidity === 'number') {
-        document.getElementById('dewpoint').textContent =
-          dewPoint(ext.temperature, ext.humidity).toFixed(1) + '\u00b0C';
-        document.getElementById('condition').textContent =
-          wxCond(ext.temperature, ext.humidity);
-      }
-      if (typeof intr.co2 === 'number') {
-        document.getElementById('co2').textContent = intr.co2 + ' ppm';
-      }
-      if (typeof intr.noise === 'number') {
-        document.getElementById('noise').textContent = intr.noise + ' dB';
-      }
-      if (typeof ext.temperature === 'number' && typeof intr.temperature === 'number') {
-        const delta = intr.temperature - ext.temperature;
-        document.getElementById('delta').textContent =
-          (delta >= 0 ? '+' : '') + delta.toFixed(1) + '\u00b0C';
-      }
-    } catch (e) {
-      document.getElementById('updated').textContent = 'Erreur';
-    }
-
-    // 2) Historique pour les graphiques : best-effort, timeout 3.5s.
-    //    Si ca echoue, on masque simplement la zone graphiques.
-    const entries = await loadHistory(3500);
-    if (!entries || !entries.length) {
+  function render() {
+    if (typeof EINK_DATA === 'undefined') {
+      document.getElementById('updated').textContent = 'Donnees manquantes';
       document.getElementById('charts').innerHTML =
-        '<div class="chart-unavailable">Historique indisponible pour cette capture</div>';
+        '<div class="chart-unavailable">EINK_DATA non injecte - verifier generate-eink.js</div>';
       return;
     }
 
-    const now = Date.now();
-    const last24 = entries.filter(e => now - new Date(e.timestamp).getTime() <= 24 * 3600 * 1000);
-    const last7d = entries.filter(e => now - new Date(e.timestamp).getTime() <= 7 * 24 * 3600 * 1000);
-    const d24 = downsample(last24, 96);
-    const d7 = downsample(last7d, 120);
+    const data = EINK_DATA.current || {};
+    const ext = data.outdoor || {};
+    const intr = data.indoor || {};
 
-    if (d24.length > 1) {
+    document.getElementById('place').textContent =
+      (data.place && data.place.city) ? ' \u00b7 ' + data.place.city : '';
+
+    const updatedDate = data.last_updated ? new Date(data.last_updated) : null;
+    document.getElementById('updated').textContent = updatedDate
+      ? updatedDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+      : '--:--';
+
+    if (typeof ext.temperature === 'number') {
+      document.getElementById('ext-temp').innerHTML = ext.temperature.toFixed(1) + '<span class="unit">&deg;C</span>';
+    }
+    if (typeof ext.humidity === 'number') {
+      document.getElementById('ext-sub').textContent = 'Hum. ' + ext.humidity + '%';
+    }
+    if (typeof intr.temperature === 'number') {
+      document.getElementById('int-temp').innerHTML = intr.temperature.toFixed(1) + '<span class="unit">&deg;C</span>';
+    }
+    if (typeof intr.humidity === 'number') {
+      document.getElementById('int-sub').textContent = 'Hum. ' + intr.humidity + '%';
+    }
+    if (typeof intr.pressure === 'number') {
+      document.getElementById('pressure').textContent = intr.pressure.toFixed(1) + ' hPa';
+    }
+    if (typeof ext.temperature === 'number' && typeof ext.humidity === 'number') {
+      document.getElementById('dewpoint').textContent = dewPoint(ext.temperature, ext.humidity).toFixed(1) + '\u00b0C';
+      document.getElementById('condition').textContent = wxCond(ext.temperature, ext.humidity);
+    }
+    if (typeof intr.co2 === 'number') {
+      document.getElementById('co2').textContent = intr.co2 + ' ppm';
+    }
+    if (typeof intr.noise === 'number') {
+      document.getElementById('noise').textContent = intr.noise + ' dB';
+    }
+    if (typeof ext.temperature === 'number' && typeof intr.temperature === 'number') {
+      const delta = intr.temperature - ext.temperature;
+      document.getElementById('delta').textContent = (delta >= 0 ? '+' : '') + delta.toFixed(1) + '\u00b0C';
+    }
+
+    const t24 = EINK_DATA.temp24 || [];
+    const p24 = EINK_DATA.press24 || [];
+    const t7 = EINK_DATA.temp7 || [];
+
+    if (t24.length > 1) {
       drawLineChart(
         document.getElementById('chart-temp24'),
         [
-          { values: d24.map(e => e.temp_out), dash: false },
-          { values: d24.map(e => e.temp_in), dash: true }
+          { values: t24.map(e => e.out), dash: false },
+          { values: t24.map(e => e.in), dash: true }
         ],
-        d24.map(e => e.timestamp),
+        t24.map(e => e.t),
         { fmt: v => v.toFixed(1) + '\u00b0' }
       );
       document.getElementById('range-temp24').textContent =
-        '(' + fmtHM(d24[0].timestamp) + ' \u2192 ' + fmtHM(d24[d24.length - 1].timestamp) + ')';
+        '(' + fmtHM(t24[0].t) + ' \u2192 ' + fmtHM(t24[t24.length - 1].t) + ')';
     } else {
       document.getElementById('chart-temp24').parentElement.innerHTML =
         '<div class="chart-title">Temperature 24h</div><div class="chart-unavailable">Pas assez de donnees</div>';
     }
 
-    if (d7.length > 1) {
+    if (t7.length > 1) {
       drawLineChart(
         document.getElementById('chart-temp7'),
-        [{ values: d7.map(e => e.temp_out), dash: false }],
-        d7.map(e => e.timestamp),
+        [{ values: t7.map(e => e.out), dash: false }],
+        t7.map(e => e.t),
         { fmt: v => v.toFixed(1) + '\u00b0' }
       );
       document.getElementById('range-temp7').textContent =
-        '(' + fmtDay(d7[0].timestamp) + ' \u2192 ' + fmtDay(d7[d7.length - 1].timestamp) + ')';
+        '(' + fmtDay(t7[0].t) + ' \u2192 ' + fmtDay(t7[t7.length - 1].t) + ')';
     } else {
       document.getElementById('chart-temp7').parentElement.innerHTML =
         '<div class="chart-title">Temperature 7 jours</div><div class="chart-unavailable">Pas assez de donnees</div>';
     }
 
-    if (d24.length > 1) {
+    if (p24.length > 1) {
       drawLineChart(
         document.getElementById('chart-press'),
-        [{ values: d24.map(e => e.pressure), dash: false }],
-        d24.map(e => e.timestamp),
+        [{ values: p24.map(e => e.p), dash: false }],
+        p24.map(e => e.t),
         { fmt: v => v.toFixed(0) }
       );
       document.getElementById('range-press').textContent =
-        '(' + fmtHM(d24[0].timestamp) + ' \u2192 ' + fmtHM(d24[d24.length - 1].timestamp) + ')';
+        '(' + fmtHM(p24[0].t) + ' \u2192 ' + fmtHM(p24[p24.length - 1].t) + ')';
     } else {
       document.getElementById('chart-press').parentElement.innerHTML =
         '<div class="chart-title">Pression 24h</div><div class="chart-unavailable">Pas assez de donnees</div>';
     }
   }
 
-  main();
+  render();
 </script>
 
 </body>
