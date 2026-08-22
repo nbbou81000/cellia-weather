@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>CelliA — E-Ink</title>
+<style>
+  /* ============================================================
+     Page e-ink dediee pour le plugin TRMNL "Screenshot"
+     Contraintes : noir pur / blanc pur uniquement, pas de degrade,
+     pas de couleur d'accent (l'orange disparait au tramage 1-bit),
+     canvas fixe 800x480 (resolution du TRMNL OG).
+     ============================================================ */
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    width: 800px;
+    height: 480px;
+    background: #ffffff;
+    color: #000000;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    overflow: hidden;
+  }
+
+  .screen {
+    width: 800px;
+    height: 480px;
+    display: flex;
+    flex-direction: column;
+    padding: 24px 32px;
+  }
+
+  /* -- Bandeau titre -- */
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    border-bottom: 3px solid #000;
+    padding-bottom: 12px;
+    margin-bottom: 22px;
+  }
+
+  .brand {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+  }
+
+  .brand .place {
+    font-weight: 400;
+    font-size: 16px;
+    margin-left: 10px;
+  }
+
+  .updated {
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  /* -- Bloc temperatures -- */
+  .temps {
+    display: flex;
+    align-items: stretch;
+    flex: 1;
+  }
+
+  .temp-block {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .temp-label {
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .temp-value {
+    font-size: 108px;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -2px;
+  }
+
+  .temp-value .unit {
+    font-size: 44px;
+    font-weight: 400;
+    margin-left: 4px;
+  }
+
+  .temp-sub {
+    font-size: 15px;
+    margin-top: 6px;
+  }
+
+  .divider {
+    width: 3px;
+    background: #000;
+    margin: 10px 30px;
+  }
+
+  /* -- Grille de stats secondaires -- */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    border-top: 3px solid #000;
+    margin-top: 18px;
+    padding-top: 16px;
+  }
+
+  .stat {
+    text-align: center;
+    border-right: 1px solid #000;
+  }
+
+  .stat:last-child { border-right: none; }
+
+  .stat-label {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .stat-value {
+    font-size: 26px;
+    font-weight: 700;
+    margin-top: 4px;
+  }
+</style>
+</head>
+<body>
+
+<div class="screen">
+
+  <div class="header">
+    <div class="brand">CelliA<span class="place" id="place">—</span></div>
+    <div class="updated" id="updated">--:--</div>
+  </div>
+
+  <div class="temps">
+    <div class="temp-block">
+      <div class="temp-label">Exterieur</div>
+      <div class="temp-value" id="ext-temp">--<span class="unit">&deg;C</span></div>
+      <div class="temp-sub" id="ext-sub">Humidite --%</div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="temp-block">
+      <div class="temp-label">Interieur</div>
+      <div class="temp-value" id="int-temp">--<span class="unit">&deg;C</span></div>
+      <div class="temp-sub" id="int-sub">Humidite --%</div>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-label">Pression</div>
+      <div class="stat-value" id="pressure">-- hPa</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Point de rosee</div>
+      <div class="stat-value" id="dewpoint">--&deg;C</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">CO2</div>
+      <div class="stat-value" id="co2">-- ppm</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Bruit</div>
+      <div class="stat-value" id="noise">-- dB</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Ecart Ext/Int</div>
+      <div class="stat-value" id="delta">--&deg;C</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // Point de rosee - formule de Magnus
+  function dewPoint(tempC, rh) {
+    const a = 17.27, b = 237.7;
+    const alpha = ((a * tempC) / (b + tempC)) + Math.log(rh / 100);
+    return (b * alpha) / (a - alpha);
+  }
+
+  async function load() {
+    try {
+      const res = await fetch('weather-data.json?t=' + Date.now());
+      const data = await res.json();
+
+      const ext = data.outdoor || {};
+      const intr = data.indoor || {};
+
+      document.getElementById('place').textContent =
+        (data.place && data.place.city) ? ' \u00b7 ' + data.place.city : '';
+
+      const updatedDate = data.last_updated ? new Date(data.last_updated) : null;
+      document.getElementById('updated').textContent = updatedDate
+        ? updatedDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+        : '--:--';
+
+      if (typeof ext.temperature === 'number') {
+        document.getElementById('ext-temp').innerHTML =
+          ext.temperature.toFixed(1) + '<span class="unit">&deg;C</span>';
+      }
+      if (typeof ext.humidity === 'number') {
+        document.getElementById('ext-sub').textContent = 'Humidite ' + ext.humidity + '%';
+      }
+
+      if (typeof intr.temperature === 'number') {
+        document.getElementById('int-temp').innerHTML =
+          intr.temperature.toFixed(1) + '<span class="unit">&deg;C</span>';
+      }
+      if (typeof intr.humidity === 'number') {
+        document.getElementById('int-sub').textContent = 'Humidite ' + intr.humidity + '%';
+      }
+
+      if (typeof intr.pressure === 'number') {
+        document.getElementById('pressure').textContent = intr.pressure.toFixed(1) + ' hPa';
+      }
+
+      if (typeof ext.temperature === 'number' && typeof ext.humidity === 'number') {
+        const dp = dewPoint(ext.temperature, ext.humidity);
+        document.getElementById('dewpoint').textContent = dp.toFixed(1) + '\u00b0C';
+      }
+
+      if (typeof intr.co2 === 'number') {
+        document.getElementById('co2').textContent = intr.co2 + ' ppm';
+      }
+
+      if (typeof intr.noise === 'number') {
+        document.getElementById('noise').textContent = intr.noise + ' dB';
+      }
+
+      if (typeof ext.temperature === 'number' && typeof intr.temperature === 'number') {
+        const delta = intr.temperature - ext.temperature;
+        document.getElementById('delta').textContent =
+          (delta >= 0 ? '+' : '') + delta.toFixed(1) + '\u00b0C';
+      }
+
+    } catch (e) {
+      document.getElementById('updated').textContent = 'Erreur';
+    }
+  }
+
+  load();
+</script>
+
+</body>
+</html>
