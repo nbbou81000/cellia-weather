@@ -7,8 +7,7 @@
   /* ============================================================
      Page e-ink dediee pour le plugin TRMNL "Screenshot"
      Contraintes : noir pur / blanc pur uniquement, pas de degrade,
-     pas de couleur d'accent (l'orange disparait au tramage 1-bit),
-     canvas fixe 800x480 (resolution du TRMNL OG).
+     pas de couleur d'accent, canvas fixe 800x480 (TRMNL OG).
      ============================================================ */
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -27,7 +26,7 @@
     height: 480px;
     display: flex;
     flex-direction: column;
-    padding: 24px 32px;
+    padding: 18px 24px;
   }
 
   /* -- Bandeau titre -- */
@@ -36,108 +35,145 @@
     justify-content: space-between;
     align-items: baseline;
     border-bottom: 3px solid #000;
-    padding-bottom: 12px;
+    padding-bottom: 8px;
     margin-bottom: 8px;
   }
 
-  .condition {
-    font-size: 15px;
-    font-weight: 600;
-    margin-bottom: 14px;
-    letter-spacing: 0.3px;
-  }
-
   .brand {
-    font-size: 22px;
+    font-size: 19px;
     font-weight: 700;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.3px;
   }
 
   .brand .place {
     font-weight: 400;
-    font-size: 16px;
-    margin-left: 10px;
+    font-size: 14px;
+    margin-left: 8px;
   }
 
-  .updated {
-    font-size: 16px;
+  .condition {
+    font-size: 14px;
     font-weight: 600;
   }
 
-  /* -- Bloc temperatures -- */
+  .updated {
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  /* -- Bloc temperatures compact -- */
   .temps {
     display: flex;
-    align-items: stretch;
-    flex: 1;
+    align-items: center;
+    margin-bottom: 8px;
   }
 
   .temp-block {
     flex: 1;
     display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
+    align-items: baseline;
+    gap: 10px;
   }
 
+  .temp-block.right { justify-content: flex-end; text-align: right; }
+
   .temp-label {
-    font-size: 16px;
+    font-size: 12px;
     font-weight: 700;
-    letter-spacing: 2px;
+    letter-spacing: 1px;
     text-transform: uppercase;
-    margin-bottom: 4px;
+    align-self: center;
   }
 
   .temp-value {
-    font-size: 108px;
+    font-size: 54px;
     font-weight: 800;
     line-height: 1;
-    letter-spacing: -2px;
+    letter-spacing: -1px;
   }
 
   .temp-value .unit {
-    font-size: 44px;
+    font-size: 24px;
     font-weight: 400;
-    margin-left: 4px;
+    margin-left: 2px;
   }
 
   .temp-sub {
-    font-size: 15px;
-    margin-top: 6px;
+    font-size: 12px;
+    align-self: center;
+    color: #000;
   }
 
-  .divider {
+  .divider-v {
     width: 3px;
+    align-self: stretch;
     background: #000;
-    margin: 10px 30px;
+    margin: 0 20px;
   }
 
-  /* -- Grille de stats secondaires -- */
-  .stats {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    border-top: 3px solid #000;
-    margin-top: 18px;
-    padding-top: 16px;
+  /* -- Bandeau stats fines -- */
+  .stats-strip {
+    display: flex;
+    border-top: 2px solid #000;
+    border-bottom: 2px solid #000;
+    padding: 6px 0;
+    margin-bottom: 10px;
   }
 
-  .stat {
+  .stat-mini {
+    flex: 1;
     text-align: center;
     border-right: 1px solid #000;
+    font-size: 13px;
   }
 
-  .stat:last-child { border-right: none; }
+  .stat-mini:last-child { border-right: none; }
 
-  .stat-label {
+  .stat-mini b { font-weight: 700; }
+
+  /* -- Zone graphiques -- */
+  .charts {
+    display: flex;
+    flex: 1;
+    gap: 14px;
+    min-height: 0;
+  }
+
+  .chart-box {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .chart-title {
     font-size: 12px;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
   }
 
-  .stat-value {
-    font-size: 26px;
-    font-weight: 700;
-    margin-top: 4px;
+  .chart-range {
+    font-size: 10px;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+
+  .chart-box canvas {
+    flex: 1;
+    width: 100%;
+    display: block;
+  }
+
+  .chart-unavailable {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    border: 1px dashed #000;
   }
 </style>
 </head>
@@ -147,66 +183,61 @@
 
   <div class="header">
     <div class="brand">CelliA<span class="place" id="place">—</span></div>
+    <div class="condition" id="condition">&nbsp;</div>
     <div class="updated" id="updated">--:--</div>
   </div>
 
-  <div class="condition" id="condition">&nbsp;</div>
-
   <div class="temps">
     <div class="temp-block">
-      <div class="temp-label">Exterieur</div>
-      <div class="temp-value" id="ext-temp">--<span class="unit">&deg;C</span></div>
-      <div class="temp-sub" id="ext-sub">Humidite --%</div>
+      <span class="temp-label">Ext</span>
+      <span class="temp-value" id="ext-temp">--<span class="unit">&deg;C</span></span>
+      <span class="temp-sub" id="ext-sub">Hum. --%</span>
     </div>
 
-    <div class="divider"></div>
+    <div class="divider-v"></div>
 
-    <div class="temp-block">
-      <div class="temp-label">Interieur</div>
-      <div class="temp-value" id="int-temp">--<span class="unit">&deg;C</span></div>
-      <div class="temp-sub" id="int-sub">Humidite --%</div>
+    <div class="temp-block right">
+      <span class="temp-sub" id="int-sub">Hum. --%</span>
+      <span class="temp-value" id="int-temp">--<span class="unit">&deg;C</span></span>
+      <span class="temp-label">Int</span>
     </div>
   </div>
 
-  <div class="stats">
-    <div class="stat">
-      <div class="stat-label">Pression</div>
-      <div class="stat-value" id="pressure">-- hPa</div>
+  <div class="stats-strip">
+    <div class="stat-mini">Pression <b id="pressure">-- hPa</b></div>
+    <div class="stat-mini">Point de rosee <b id="dewpoint">--&deg;C</b></div>
+    <div class="stat-mini">CO2 <b id="co2">-- ppm</b></div>
+    <div class="stat-mini">Bruit <b id="noise">-- dB</b></div>
+    <div class="stat-mini">Ecart Ext/Int <b id="delta">--&deg;C</b></div>
+  </div>
+
+  <div class="charts" id="charts">
+    <div class="chart-box">
+      <div class="chart-title">Temperature 24h <span class="chart-range" id="range-temp24"></span></div>
+      <canvas id="chart-temp24"></canvas>
     </div>
-    <div class="stat">
-      <div class="stat-label">Point de rosee</div>
-      <div class="stat-value" id="dewpoint">--&deg;C</div>
+    <div class="chart-box">
+      <div class="chart-title">Temperature 7 jours <span class="chart-range" id="range-temp7"></span></div>
+      <canvas id="chart-temp7"></canvas>
     </div>
-    <div class="stat">
-      <div class="stat-label">CO2</div>
-      <div class="stat-value" id="co2">-- ppm</div>
-    </div>
-    <div class="stat">
-      <div class="stat-label">Bruit</div>
-      <div class="stat-value" id="noise">-- dB</div>
-    </div>
-    <div class="stat">
-      <div class="stat-label">Ecart Ext/Int</div>
-      <div class="stat-value" id="delta">--&deg;C</div>
+    <div class="chart-box">
+      <div class="chart-title">Pression 24h <span class="chart-range" id="range-press"></span></div>
+      <canvas id="chart-press"></canvas>
     </div>
   </div>
 
 </div>
 
 <script>
-  // Point de rosee - formule de Magnus
+  // ── Point de rosee - formule de Magnus ──────────────────
   function dewPoint(tempC, rh) {
     const a = 17.27, b = 237.7;
     const alpha = ((a * tempC) / (b + tempC)) + Math.log(rh / 100);
     return (b * alpha) / (a - alpha);
   }
 
-  // Reproduit la logique wxCond() du site principal CelliA.
-  // NB : le site principal utilise aussi la tendance de pression (12 derniers
-  // points de l'historique mensuel), mais ce fichier pese plusieurs centaines
-  // de Ko et fait largement depasser le timeout de 5s du plugin Screenshot
-  // TRMNL. On s'en passe ici : wxCond() retombe alors sur les seuils
-  // temperature/humidite, ce qui suffit dans l'immense majorite des cas.
+  // ── Reproduit la logique wxCond() du site principal CelliA ──
+  // (version sans tendance de pression : voir echange precedent)
   function wxCond(to, ho) {
     if (ho > 90) return 'Temps pluvieux probable';
     if (ho > 88) return 'Tres humide';
@@ -216,11 +247,126 @@
     return 'Conditions stables';
   }
 
-  async function load() {
-    try {
-      const res = await fetch('weather-data.json?t=' + Date.now());
-      const data = await res.json();
+  // ── Chargement des donnees courantes (rapide, prioritaire) ──
+  async function loadCurrent() {
+    const res = await fetch('weather-data.json?t=' + Date.now());
+    return res.json();
+  }
 
+  // ── Chargement de l'historique du mois courant, avec timeout ──
+  // NB : on ne charge que le fichier du mois en cours pour rester
+  // simple et rapide. Limite connue : en tout debut de mois, les
+  // graphiques "24h" et "7 jours" peuvent manquer de profondeur
+  // (les points du mois precedent ne sont pas recuperes).
+  function monthKey(date) {
+    const y = date.getFullYear(), m = date.getMonth() + 1;
+    return y + '-' + (m < 10 ? '0' + m : m);
+  }
+
+  async function loadHistory(timeoutMs) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const key = monthKey(new Date());
+      const res = await fetch('history-' + key + '.json?t=' + Date.now(), { signal: controller.signal });
+      clearTimeout(timer);
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data.entries || [];
+    } catch (e) {
+      clearTimeout(timer);
+      return null;
+    }
+  }
+
+  // ── Utilitaires graphiques ──────────────────────────────
+  function downsample(arr, maxPoints) {
+    if (arr.length <= maxPoints) return arr;
+    const step = Math.ceil(arr.length / maxPoints);
+    return arr.filter((_, i) => i % step === 0);
+  }
+
+  function fmtHM(ts) {
+    const d = new Date(ts);
+    return d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  function fmtDay(ts) {
+    const d = new Date(ts);
+    return d.toLocaleDateString('fr-FR', { weekday: 'short' });
+  }
+
+  // Dessine un graphique en lignes monochrome sur un canvas.
+  // series: [{ values: [nums...], dash: bool }]
+  // labels: [timestamps...] (memes index que values)
+  function drawLineChart(canvas, series, labels, opts) {
+    opts = opts || {};
+    const dpr = 1; // pas de scaling: le tramage e-ink absorbe les aliasing
+    const w = canvas.clientWidth;
+    const h = canvas.clientHeight;
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, w, h);
+
+    const padTop = 14, padBottom = 16, padLeft = 4, padRight = 4;
+    const plotW = w - padLeft - padRight;
+    const plotH = h - padTop - padBottom;
+
+    let allVals = [];
+    series.forEach(s => { allVals = allVals.concat(s.values.filter(v => v != null)); });
+    if (!allVals.length) return;
+
+    let min = Math.min(...allVals);
+    let max = Math.max(...allVals);
+    if (min === max) { min -= 1; max += 1; }
+    const margin = (max - min) * 0.1;
+    min -= margin; max += margin;
+
+    const n = labels.length;
+    function xAt(i) { return padLeft + (n <= 1 ? 0 : (i / (n - 1)) * plotW); }
+    function yAt(v) { return padTop + plotH - ((v - min) / (max - min)) * plotH; }
+
+    // Baseline
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(padLeft, padTop + plotH);
+    ctx.lineTo(padLeft + plotW, padTop + plotH);
+    ctx.stroke();
+
+    // Min/max labels
+    ctx.fillStyle = '#000';
+    ctx.font = '10px Helvetica Neue, Arial, sans-serif';
+    ctx.textBaseline = 'top';
+    ctx.textAlign = 'left';
+    ctx.fillText((opts.fmt ? opts.fmt(max) : max.toFixed(1)), padLeft, 0);
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText((opts.fmt ? opts.fmt(min) : min.toFixed(1)), padLeft, h);
+
+    // Lignes de donnees
+    series.forEach(s => {
+      ctx.beginPath();
+      ctx.lineWidth = 2.4;
+      ctx.setLineDash(s.dash ? [6, 4] : []);
+      let started = false;
+      for (let i = 0; i < n; i++) {
+        const v = s.values[i];
+        if (v == null) { started = false; continue; }
+        const x = xAt(i), y = yAt(v);
+        if (!started) { ctx.moveTo(x, y); started = true; }
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    });
+    ctx.setLineDash([]);
+  }
+
+  async function main() {
+    // 1) Donnees courantes : rendu immediat, ne depend jamais de l'historique
+    try {
+      const data = await loadCurrent();
       const ext = data.outdoor || {};
       const intr = data.indoor || {};
 
@@ -237,51 +383,101 @@
           ext.temperature.toFixed(1) + '<span class="unit">&deg;C</span>';
       }
       if (typeof ext.humidity === 'number') {
-        document.getElementById('ext-sub').textContent = 'Humidite ' + ext.humidity + '%';
+        document.getElementById('ext-sub').textContent = 'Hum. ' + ext.humidity + '%';
       }
-
       if (typeof intr.temperature === 'number') {
         document.getElementById('int-temp').innerHTML =
           intr.temperature.toFixed(1) + '<span class="unit">&deg;C</span>';
       }
       if (typeof intr.humidity === 'number') {
-        document.getElementById('int-sub').textContent = 'Humidite ' + intr.humidity + '%';
+        document.getElementById('int-sub').textContent = 'Hum. ' + intr.humidity + '%';
       }
-
       if (typeof intr.pressure === 'number') {
         document.getElementById('pressure').textContent = intr.pressure.toFixed(1) + ' hPa';
       }
-
       if (typeof ext.temperature === 'number' && typeof ext.humidity === 'number') {
-        const dp = dewPoint(ext.temperature, ext.humidity);
-        document.getElementById('dewpoint').textContent = dp.toFixed(1) + '\u00b0C';
+        document.getElementById('dewpoint').textContent =
+          dewPoint(ext.temperature, ext.humidity).toFixed(1) + '\u00b0C';
+        document.getElementById('condition').textContent =
+          wxCond(ext.temperature, ext.humidity);
       }
-
       if (typeof intr.co2 === 'number') {
         document.getElementById('co2').textContent = intr.co2 + ' ppm';
       }
-
       if (typeof intr.noise === 'number') {
         document.getElementById('noise').textContent = intr.noise + ' dB';
       }
-
       if (typeof ext.temperature === 'number' && typeof intr.temperature === 'number') {
         const delta = intr.temperature - ext.temperature;
         document.getElementById('delta').textContent =
           (delta >= 0 ? '+' : '') + delta.toFixed(1) + '\u00b0C';
       }
-
-      if (typeof ext.temperature === 'number' && typeof ext.humidity === 'number') {
-        document.getElementById('condition').textContent =
-          wxCond(ext.temperature, ext.humidity);
-      }
-
     } catch (e) {
       document.getElementById('updated').textContent = 'Erreur';
     }
+
+    // 2) Historique pour les graphiques : best-effort, timeout 3.5s.
+    //    Si ca echoue, on masque simplement la zone graphiques.
+    const entries = await loadHistory(3500);
+    if (!entries || !entries.length) {
+      document.getElementById('charts').innerHTML =
+        '<div class="chart-unavailable">Historique indisponible pour cette capture</div>';
+      return;
+    }
+
+    const now = Date.now();
+    const last24 = entries.filter(e => now - new Date(e.timestamp).getTime() <= 24 * 3600 * 1000);
+    const last7d = entries.filter(e => now - new Date(e.timestamp).getTime() <= 7 * 24 * 3600 * 1000);
+    const d24 = downsample(last24, 96);
+    const d7 = downsample(last7d, 120);
+
+    if (d24.length > 1) {
+      drawLineChart(
+        document.getElementById('chart-temp24'),
+        [
+          { values: d24.map(e => e.temp_out), dash: false },
+          { values: d24.map(e => e.temp_in), dash: true }
+        ],
+        d24.map(e => e.timestamp),
+        { fmt: v => v.toFixed(1) + '\u00b0' }
+      );
+      document.getElementById('range-temp24').textContent =
+        '(' + fmtHM(d24[0].timestamp) + ' \u2192 ' + fmtHM(d24[d24.length - 1].timestamp) + ')';
+    } else {
+      document.getElementById('chart-temp24').parentElement.innerHTML =
+        '<div class="chart-title">Temperature 24h</div><div class="chart-unavailable">Pas assez de donnees</div>';
+    }
+
+    if (d7.length > 1) {
+      drawLineChart(
+        document.getElementById('chart-temp7'),
+        [{ values: d7.map(e => e.temp_out), dash: false }],
+        d7.map(e => e.timestamp),
+        { fmt: v => v.toFixed(1) + '\u00b0' }
+      );
+      document.getElementById('range-temp7').textContent =
+        '(' + fmtDay(d7[0].timestamp) + ' \u2192 ' + fmtDay(d7[d7.length - 1].timestamp) + ')';
+    } else {
+      document.getElementById('chart-temp7').parentElement.innerHTML =
+        '<div class="chart-title">Temperature 7 jours</div><div class="chart-unavailable">Pas assez de donnees</div>';
+    }
+
+    if (d24.length > 1) {
+      drawLineChart(
+        document.getElementById('chart-press'),
+        [{ values: d24.map(e => e.pressure), dash: false }],
+        d24.map(e => e.timestamp),
+        { fmt: v => v.toFixed(0) }
+      );
+      document.getElementById('range-press').textContent =
+        '(' + fmtHM(d24[0].timestamp) + ' \u2192 ' + fmtHM(d24[d24.length - 1].timestamp) + ')';
+    } else {
+      document.getElementById('chart-press').parentElement.innerHTML =
+        '<div class="chart-title">Pression 24h</div><div class="chart-unavailable">Pas assez de donnees</div>';
+    }
   }
 
-  load();
+  main();
 </script>
 
 </body>
