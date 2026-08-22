@@ -37,7 +37,14 @@
     align-items: baseline;
     border-bottom: 3px solid #000;
     padding-bottom: 12px;
-    margin-bottom: 22px;
+    margin-bottom: 8px;
+  }
+
+  .condition {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 14px;
+    letter-spacing: 0.3px;
   }
 
   .brand {
@@ -143,6 +150,8 @@
     <div class="updated" id="updated">--:--</div>
   </div>
 
+  <div class="condition" id="condition">&nbsp;</div>
+
   <div class="temps">
     <div class="temp-block">
       <div class="temp-label">Exterieur</div>
@@ -190,6 +199,21 @@
     const a = 17.27, b = 237.7;
     const alpha = ((a * tempC) / (b + tempC)) + Math.log(rh / 100);
     return (b * alpha) / (a - alpha);
+  }
+
+  // Reproduit la logique wxCond() du site principal CelliA.
+  // NB : le site principal utilise aussi la tendance de pression (12 derniers
+  // points de l'historique mensuel), mais ce fichier pese plusieurs centaines
+  // de Ko et fait largement depasser le timeout de 5s du plugin Screenshot
+  // TRMNL. On s'en passe ici : wxCond() retombe alors sur les seuils
+  // temperature/humidite, ce qui suffit dans l'immense majorite des cas.
+  function wxCond(to, ho) {
+    if (ho > 90) return 'Temps pluvieux probable';
+    if (ho > 88) return 'Tres humide';
+    if (to > 28 && ho < 55) return 'Chaud et ensoleille';
+    if (to < 3) return 'Temps froid';
+    if (to > 20 && ho < 70) return 'Beau temps';
+    return 'Conditions stables';
   }
 
   async function load() {
@@ -245,6 +269,11 @@
         const delta = intr.temperature - ext.temperature;
         document.getElementById('delta').textContent =
           (delta >= 0 ? '+' : '') + delta.toFixed(1) + '\u00b0C';
+      }
+
+      if (typeof ext.temperature === 'number' && typeof ext.humidity === 'number') {
+        document.getElementById('condition').textContent =
+          wxCond(ext.temperature, ext.humidity);
       }
 
     } catch (e) {
