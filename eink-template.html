@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>CelliA — E-Ink</title>
+<style>
+  /* ============================================================
+     Page e-ink dediee pour le plugin TRMNL "Screenshot".
+     IMPORTANT : ce fichier est un TEMPLATE. Il n'est jamais servi
+     tel quel : le script generate-eink.js l'utilise pour produire
+     eink.html avec les donnees deja injectees en dur (pas de fetch()
+     au moment de la capture -> aucune dependance au comportement
+     reseau du service de rendu TRMNL).
+     Contraintes visuelles : noir pur / blanc pur uniquement, pas de
+     degrade, pas de couleur d'accent, canvas fixe 800x480 (TRMNL OG).
+     ============================================================ */
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    width: 800px;
+    height: 480px;
+    background: #ffffff;
+    color: #000000;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    overflow: hidden;
+  }
+
+  .screen {
+    width: 800px;
+    height: 480px;
+    display: flex;
+    flex-direction: column;
+    padding: 18px 24px;
+  }
+
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    border-bottom: 3px solid #000;
+    padding-bottom: 8px;
+    margin-bottom: 8px;
+  }
+
+  .brand { font-size: 19px; font-weight: 700; letter-spacing: 0.3px; }
+  .brand .place { font-weight: 400; font-size: 14px; margin-left: 8px; }
+  .condition { font-size: 14px; font-weight: 600; }
+  .updated { font-size: 14px; font-weight: 600; }
+
+  .temps { display: flex; align-items: center; margin-bottom: 8px; }
+  .temp-block { flex: 1; display: flex; align-items: baseline; gap: 10px; }
+  .temp-block.right { justify-content: flex-end; text-align: right; }
+  .temp-label { font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; align-self: center; }
+  .temp-value { font-size: 54px; font-weight: 800; line-height: 1; letter-spacing: -1px; }
+  .temp-value .unit { font-size: 24px; font-weight: 400; margin-left: 2px; }
+  .temp-sub { font-size: 12px; align-self: center; color: #000; }
+  .divider-v { width: 3px; align-self: stretch; background: #000; margin: 0 20px; }
+
+  .stats-strip {
+    display: flex;
+    border-top: 2px solid #000;
+    border-bottom: 2px solid #000;
+    padding: 6px 0;
+    margin-bottom: 10px;
+  }
+  .stat-mini { flex: 1; text-align: center; border-right: 1px solid #000; font-size: 13px; }
+  .stat-mini:last-child { border-right: none; }
+  .stat-mini b { font-weight: 700; }
+
+  .charts { display: flex; flex: 1; gap: 14px; min-height: 0; }
+  .chart-box { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .chart-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+  .chart-range { font-size: 10px; font-weight: 400; text-transform: none; letter-spacing: 0; }
+  .chart-box canvas { flex: 1; width: 100%; display: block; }
+  .chart-unavailable { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 12px; border: 1px dashed #000; }
+</style>
+</head>
+<body>
+
+<div class="screen">
+
+  <div class="header">
+    <div class="brand">CelliA<span class="place" id="place">—</span></div>
+    <div class="condition" id="condition">&nbsp;</div>
+    <div class="updated" id="updated">--:--</div>
+  </div>
+
+  <div class="temps">
+    <div class="temp-block">
+      <span class="temp-label">Ext</span>
+      <span class="temp-value" id="ext-temp">--<span class="unit">&deg;C</span></span>
+      <span class="temp-sub" id="ext-sub">Hum. --%</span>
+    </div>
+    <div class="divider-v"></div>
+    <div class="temp-block right">
+      <span class="temp-sub" id="int-sub">Hum. --%</span>
+      <span class="temp-value" id="int-temp">--<span class="unit">&deg;C</span></span>
+      <span class="temp-label">Int</span>
+    </div>
+  </div>
+
+  <div class="stats-strip">
+    <div class="stat-mini">Pression <b id="pressure">-- hPa</b></div>
+    <div class="stat-mini">Point de rosee <b id="dewpoint">--&deg;C</b></div>
+    <div class="stat-mini">CO2 <b id="co2">-- ppm</b></div>
+    <div class="stat-mini">Bruit <b id="noise">-- dB</b></div>
+    <div class="stat-mini">Ecart Ext/Int <b id="delta">--&deg;C</b></div>
+  </div>
+
+  <div class="charts" id="charts">
+    <div class="chart-box">
+      <div class="chart-title">Temperature 24h <span class="chart-range" id="range-temp24"></span></div>
+      <canvas id="chart-temp24"></canvas>
+    </div>
+    <div class="chart-box">
+      <div class="chart-title">Temperature 7 jours <span class="chart-range" id="range-temp7"></span></div>
+      <canvas id="chart-temp7"></canvas>
+    </div>
+    <div class="chart-box">
+      <div class="chart-title">Pression 24h <span class="chart-range" id="range-press"></span></div>
+      <canvas id="chart-press"></canvas>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  /*__EINK_DATA__*/
+  // La ligne ci-dessus est remplacee par generate-eink.js avec :
+  // const EINK_DATA = { current: {...}, temp24: [...], temp7: [...], press24: [...], generated_at: "..." };
+  // Aucun fetch() ici : tout est deja present au chargement de la page,
+  // donc aucune dependance au comportement reseau du moteur de rendu TRMNL.
+</script>
+
+<script>
+  function dewPoint(tempC, rh) {
+    const a = 17.27, b = 237.7;
+    const alpha = ((a * tempC) / (b + tempC)) + Math.log(rh / 100);
+    return (b * alpha) / (a - alpha);
+  }
+
+  // Reproduit la logique wxCond() (version sans tendance de pression)
+  function wxCond(to, ho) {
+    if (ho > 90) return 'Temps pluvieux probable';
+    if (ho > 88) return 'Tres humide';
+    if (to > 28 && ho < 55) return 'Chaud et ensoleille';
+    if (to < 3) return 'Temps froid';
+    if (to > 20 && ho < 70) return 'Beau temps';
+    return 'Conditions stables';
+  }
+
+  function fmtHM(ts) {
+    return new Date(ts).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  }
+  function fmtDay(ts) {
+    return new Date(ts).toLocaleDateString('fr-FR', { weekday: 'short' });
+  }
+
+  function drawLineChart(canvas, series, labels, opts) {
+    opts = opts || {};
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, w, h);
+
+    const padTop = 14, padBottom = 16, padLeft = 4, padRight = 4;
+    const plotW = w - padLeft - padRight, plotH = h - padTop - padBottom;
+
+    let allVals = [];
+    series.forEach(s => { allVals = allVals.concat(s.values.filter(v => v != null)); });
+    if (!allVals.length) return;
+
+    let min = Math.min(...allVals), max = Math.max(...allVals);
+    if (min === max) { min -= 1; max += 1; }
+    const margin = (max - min) * 0.1;
+    min -= margin; max += margin;
+
+    const n = labels.length;
+    function xAt(i) { return padLeft + (n <= 1 ? 0 : (i / (n - 1)) * plotW); }
+    function yAt(v) { return padTop + plotH - ((v - min) / (max - min)) * plotH; }
+
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(padLeft, padTop + plotH);
+    ctx.lineTo(padLeft + plotW, padTop + plotH);
+    ctx.stroke();
+
+    ctx.fillStyle = '#000';
+    ctx.font = '10px Helvetica Neue, Arial, sans-serif';
+    ctx.textBaseline = 'top';
+    ctx.textAlign = 'left';
+    ctx.fillText((opts.fmt ? opts.fmt(max) : max.toFixed(1)), padLeft, 0);
+    ctx.textBaseline = 'bottom';
+    ctx.fillText((opts.fmt ? opts.fmt(min) : min.toFixed(1)), padLeft, h);
+
+    series.forEach(s => {
+      ctx.beginPath();
+      ctx.lineWidth = 2.4;
+      ctx.setLineDash(s.dash ? [6, 4] : []);
+      let started = false;
+      for (let i = 0; i < n; i++) {
+        const v = s.values[i];
+        if (v == null) { started = false; continue; }
+        const x = xAt(i), y = yAt(v);
+        if (!started) { ctx.moveTo(x, y); started = true; }
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    });
+    ctx.setLineDash([]);
+  }
+
+  function render() {
+    if (typeof EINK_DATA === 'undefined') {
+      document.getElementById('updated').textContent = 'Donnees manquantes';
+      document.getElementById('charts').innerHTML =
+        '<div class="chart-unavailable">EINK_DATA non injecte - verifier generate-eink.js</div>';
+      return;
+    }
+
+    const data = EINK_DATA.current || {};
+    const ext = data.outdoor || {};
+    const intr = data.indoor || {};
+
+    document.getElementById('place').textContent =
+      (data.place && data.place.city) ? ' \u00b7 ' + data.place.city : '';
+
+    const updatedDate = data.last_updated ? new Date(data.last_updated) : null;
+    document.getElementById('updated').textContent = updatedDate
+      ? updatedDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+      : '--:--';
+
+    if (typeof ext.temperature === 'number') {
+      document.getElementById('ext-temp').innerHTML = ext.temperature.toFixed(1) + '<span class="unit">&deg;C</span>';
+    }
+    if (typeof ext.humidity === 'number') {
+      document.getElementById('ext-sub').textContent = 'Hum. ' + ext.humidity + '%';
+    }
+    if (typeof intr.temperature === 'number') {
+      document.getElementById('int-temp').innerHTML = intr.temperature.toFixed(1) + '<span class="unit">&deg;C</span>';
+    }
+    if (typeof intr.humidity === 'number') {
+      document.getElementById('int-sub').textContent = 'Hum. ' + intr.humidity + '%';
+    }
+    if (typeof intr.pressure === 'number') {
+      document.getElementById('pressure').textContent = intr.pressure.toFixed(1) + ' hPa';
+    }
+    if (typeof ext.temperature === 'number' && typeof ext.humidity === 'number') {
+      document.getElementById('dewpoint').textContent = dewPoint(ext.temperature, ext.humidity).toFixed(1) + '\u00b0C';
+      document.getElementById('condition').textContent = wxCond(ext.temperature, ext.humidity);
+    }
+    if (typeof intr.co2 === 'number') {
+      document.getElementById('co2').textContent = intr.co2 + ' ppm';
+    }
+    if (typeof intr.noise === 'number') {
+      document.getElementById('noise').textContent = intr.noise + ' dB';
+    }
+    if (typeof ext.temperature === 'number' && typeof intr.temperature === 'number') {
+      const delta = intr.temperature - ext.temperature;
+      document.getElementById('delta').textContent = (delta >= 0 ? '+' : '') + delta.toFixed(1) + '\u00b0C';
+    }
+
+    const t24 = EINK_DATA.temp24 || [];
+    const p24 = EINK_DATA.press24 || [];
+    const t7 = EINK_DATA.temp7 || [];
+
+    if (t24.length > 1) {
+      drawLineChart(
+        document.getElementById('chart-temp24'),
+        [
+          { values: t24.map(e => e.out), dash: false },
+          { values: t24.map(e => e.in), dash: true }
+        ],
+        t24.map(e => e.t),
+        { fmt: v => v.toFixed(1) + '\u00b0' }
+      );
+      document.getElementById('range-temp24').textContent =
+        '(' + fmtHM(t24[0].t) + ' \u2192 ' + fmtHM(t24[t24.length - 1].t) + ')';
+    } else {
+      document.getElementById('chart-temp24').parentElement.innerHTML =
+        '<div class="chart-title">Temperature 24h</div><div class="chart-unavailable">Pas assez de donnees</div>';
+    }
+
+    if (t7.length > 1) {
+      drawLineChart(
+        document.getElementById('chart-temp7'),
+        [{ values: t7.map(e => e.out), dash: false }],
+        t7.map(e => e.t),
+        { fmt: v => v.toFixed(1) + '\u00b0' }
+      );
+      document.getElementById('range-temp7').textContent =
+        '(' + fmtDay(t7[0].t) + ' \u2192 ' + fmtDay(t7[t7.length - 1].t) + ')';
+    } else {
+      document.getElementById('chart-temp7').parentElement.innerHTML =
+        '<div class="chart-title">Temperature 7 jours</div><div class="chart-unavailable">Pas assez de donnees</div>';
+    }
+
+    if (p24.length > 1) {
+      drawLineChart(
+        document.getElementById('chart-press'),
+        [{ values: p24.map(e => e.p), dash: false }],
+        p24.map(e => e.t),
+        { fmt: v => v.toFixed(0) }
+      );
+      document.getElementById('range-press').textContent =
+        '(' + fmtHM(p24[0].t) + ' \u2192 ' + fmtHM(p24[p24.length - 1].t) + ')';
+    } else {
+      document.getElementById('chart-press').parentElement.innerHTML =
+        '<div class="chart-title">Pression 24h</div><div class="chart-unavailable">Pas assez de donnees</div>';
+    }
+  }
+
+  render();
+</script>
+
+</body>
+</html>
