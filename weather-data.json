@@ -1,5 +1,5 @@
 {
-  "last_updated": "2026-10-02T23:01:09.152Z",
+  "last_updated": "2026-10-02T23:15:41.592Z",
   "station_name": "Station meteo",
   "place": {
     "city": "Cagnac-les-Mines",
@@ -15,8 +15,8 @@
     "humidity": 56,
     "co2": 1518,
     "noise": 37,
-    "pressure": 1031.8,
-    "abs_pressure": 993.6,
+    "pressure": 1031.7,
+    "abs_pressure": 993.5,
     "module_name": "Etage"
   },
   "outdoor": {
