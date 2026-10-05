@@ -5343,6 +5343,19 @@
       "outdoor_source": "netatmo",
       "ac_state": "on",
       "ac_setpoint": 18
+    },
+    {
+      "timestamp": "2026-10-05T10:31:01.332Z",
+      "temp_out": 21.9,
+      "temp_in": 23.1,
+      "hum_out": 76,
+      "hum_in": 64,
+      "pressure": 1028.1,
+      "co2": 984,
+      "noise": 44,
+      "outdoor_source": "netatmo",
+      "ac_state": "on",
+      "ac_setpoint": 18
     }
   ]
 }
