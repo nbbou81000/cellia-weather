@@ -34489,6 +34489,19 @@
       "outdoor_source": "open-meteo",
       "ac_state": "on",
       "ac_setpoint": 18
+    },
+    {
+      "timestamp": "2026-10-30T02:45:48.433Z",
+      "temp_out": 5.1,
+      "temp_in": 18.1,
+      "hum_out": 91,
+      "hum_in": 65,
+      "pressure": 1026.8,
+      "co2": 1395,
+      "noise": 40,
+      "outdoor_source": "open-meteo",
+      "ac_state": "on",
+      "ac_setpoint": 18
     }
   ]
 }
