@@ -1,5 +1,5 @@
 {
-  "last_updated": "2026-10-30T07:01:12.042Z",
+  "last_updated": "2026-10-30T07:15:45.282Z",
   "station_name": "Station meteo",
   "place": {
     "city": "Cagnac-les-Mines",
@@ -20,10 +20,10 @@
     "module_name": "Etage"
   },
   "outdoor": {
-    "temperature": 4.4,
+    "temperature": 4.8,
     "humidity": 95,
-    "apparent_temperature": 2.1,
-    "wind_speed": 5.8,
+    "apparent_temperature": 2.6,
+    "wind_speed": 5.4,
     "wind_direction": 4,
     "precipitation": null,
     "weather_code": 1,
