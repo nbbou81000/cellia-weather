@@ -1,0 +1,18 @@
+{
+  "month": "2026-11",
+  "entries": [
+    {
+      "timestamp": "2026-11-01T00:01:09.399Z",
+      "temp_out": 13.1,
+      "temp_in": 18.5,
+      "hum_out": 72,
+      "hum_in": 65,
+      "pressure": 1028.6,
+      "co2": 1154,
+      "noise": 37,
+      "outdoor_source": "netatmo",
+      "ac_state": "on",
+      "ac_setpoint": 18
+    }
+  ]
+}
